@@ -19,7 +19,12 @@
 
 use core::fmt;
 
+#[cfg(not(feature = "force-scalar"))]
+mod dispatch;
+#[cfg_attr(feature = "reference", path = "reference.rs")]
 mod scalar;
+#[cfg(not(feature = "force-scalar"))]
+mod simd;
 
 /// The four RFC 4648 alphabet/padding combinations.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -98,10 +103,7 @@ impl fmt::Display for Error {
 pub const fn encoded_len(input_len: usize, mode: Mode) -> Option<usize> {
     let tail = match input_len % 3 {
         0 => 0,
-        n if mode.padded() => {
-            let _ = n;
-            4
-        }
+        _ if mode.padded() => 4,
         n => n + 1,
     };
     match (input_len / 3).checked_mul(4) {
@@ -130,7 +132,12 @@ pub fn encode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Erro
     if output.len() < required {
         return Err(Error::OutputTooSmall { required });
     }
-    scalar::encode(input, &mut output[..required], mode);
+    let output = &mut output[..required];
+    #[cfg(not(feature = "force-scalar"))]
+    let consumed = dispatch::encode(input, output, mode.url());
+    #[cfg(feature = "force-scalar")]
+    let consumed = 0;
+    scalar::encode(&input[consumed..], &mut output[(consumed / 3) * 4..], mode);
     Ok(required)
 }
 
@@ -173,7 +180,25 @@ pub fn decode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Erro
         return Err(Error::OutputTooSmall { required });
     }
     let output = &mut output[..required];
-    scalar::decode_body(&input[..body_len], output, mode.url(), 0)?;
+    #[cfg(not(feature = "force-scalar"))]
+    let consumed = dispatch::decode(&input[..body_len], output, mode.url()).map_err(|index| {
+        if input[index] == b'=' {
+            Error::InvalidPadding { index }
+        } else {
+            Error::InvalidByte {
+                index,
+                byte: input[index],
+            }
+        }
+    })?;
+    #[cfg(feature = "force-scalar")]
+    let consumed = 0;
+    scalar::decode_body(
+        &input[consumed..body_len],
+        &mut output[(consumed / 4) * 3..],
+        mode.url(),
+        consumed,
+    )?;
     if tail_len != 0 {
         let a = scalar::value(input[body_len], mode.url(), body_len)?;
         let b = scalar::value(input[body_len + 1], mode.url(), body_len + 1)?;

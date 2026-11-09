@@ -56,3 +56,39 @@ unchanged. Successful calls change only `output[..written]`.
 The specification is [RFC 4648 §§3–5 and §10](https://www.rfc-editor.org/rfc/rfc4648.html).
 There is no MIME handling, whitespace skipping, custom alphabet, streaming I/O,
 CLI, serde integration, or other encoding format.
+
+## Backends and reproducibility
+
+The scalar path uses paired encoding lookups and an eight-symbol SWAR decoder.
+AVX2 and AArch64 NEON process full blocks; scalar code handles short inputs and tails.
+On x86-64, a cached `core::arch` CPUID/XGETBV check establishes CPU and OS support.
+SGX and 32-bit x86 use compile-time features. AArch64 uses NEON only when enabled
+by the target. Other targets use scalar code. No API requires `unsafe`.
+
+`force-scalar`, `reference`, `no-runtime-detect`, and `no-short-path` are verification
+and benchmark controls. `reference` retains the simple scalar implementation.
+No feature changes the accepted language, error precedence, or dependency graph.
+
+The independent [comparison project](comparison/README.md) pins current baseline
+versions, checks strict semantics, and retains raw samples and environment data.
+[Performance results](comparison/REPORT.md) include both wins and losses. A shared
+runner smoke result is a correctness check, not a speed claim.
+
+```sh
+cargo test --locked
+cargo +1.70.0 test --locked
+cargo test --manifest-path comparison/Cargo.toml --locked
+bash comparison/run.sh
+```
+
+## CI and publishing
+
+CI tests stable and MSRV on x86-64 and AArch64 runners, checks bare-metal targets,
+runs Miri on scalar code, and audits the zero-dependency package boundary.
+The comparison workspace is excluded from the published crate.
+
+Set the repository Actions secret `CARGO_REGISTRY_TOKEN`. A `vX.Y.Z` tag matching
+`Cargo.toml` triggers full checks on its resolved commit, package verification,
+and `cargo publish --locked`. The Publish workflow can also select an existing
+tag manually. Missing credentials, mismatched versions, or failed checks stop
+publication. GitHub Release creation follows confirmed crates.io publication.

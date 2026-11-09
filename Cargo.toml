@@ -17,6 +17,7 @@ default = []
 force-scalar = []
 reference = ["force-scalar"]
 no-runtime-detect = []
+no-short-path = []
 
 [workspace]
 members = ["."]
