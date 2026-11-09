@@ -74,8 +74,11 @@ Rust 1.89 is required for stable AVX-512 intrinsics; the public API is unchanged
 
 The independent [comparison project](https://github.com/LIghtJUNction/z64/blob/main/comparison/README.md) pins current baseline
 versions, checks strict semantics, and retains raw samples and environment data.
-[Performance results](https://github.com/LIghtJUNction/z64/blob/main/comparison/REPORT.md) include both wins and losses. A shared
-runner smoke result is a correctness check, not a speed claim.
+[Performance results](https://github.com/LIghtJUNction/z64/blob/main/comparison/REPORT.md) include both wins and losses for generic
+and native builds. The recorded measurements use warm buffers on a shared Xeon
+with AVX-512 VBMI; they establish no portable speed guarantee. The 2x target
+against the strongest current competitor remains unmet. Shared-runner smoke
+results check correctness and are not used for performance conclusions.
 
 ```sh
 cargo test --locked
