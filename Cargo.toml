@@ -1,0 +1,27 @@
+[package]
+name = "z64"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.70"
+description = "Strict, allocation-free Base64 and Base64URL with zero dependencies"
+license = "MIT"
+repository = "https://github.com/LIghtJUNction/z64"
+readme = "README.md"
+keywords = ["base64", "base64url", "no-std", "simd", "encoding"]
+categories = ["encoding", "no-std", "no-std::no-alloc"]
+include = ["src/**", "tests/**", "Cargo.toml", "Cargo.lock", "README.md", "LICENSE"]
+
+[features]
+default = []
+# Reproducible verification and performance ablations; no feature adds dependencies.
+force-scalar = []
+reference = ["force-scalar"]
+no-runtime-detect = []
+
+[workspace]
+members = ["."]
+exclude = ["comparison"]
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
