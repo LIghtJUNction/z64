@@ -10,7 +10,7 @@ fn reference(input: &[u8], url: bool) -> Vec<u8> {
         b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
     };
     let mut out = Vec::new();
-    for chunk in input.chunks_exact(3) {
+    for chunk in input.as_chunks::<3>().0 {
         let n = u32::from(chunk[0]) << 16 | u32::from(chunk[1]) << 8 | u32::from(chunk[2]);
         for shift in [18, 12, 6, 0] {
             out.push(alphabet[((n >> shift) & 63) as usize]);

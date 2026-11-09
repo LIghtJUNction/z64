@@ -7,6 +7,10 @@
 //! assumed. An invalid vector is never stored.
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+#[path = "simd/avx512.rs"]
+pub(crate) mod avx512;
+
+#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 #[path = "simd/avx2.rs"]
 pub(crate) mod avx2;
 #[cfg(target_arch = "aarch64")]

@@ -128,6 +128,9 @@ pub const fn decoded_capacity(input_len: usize) -> Option<usize> {
 /// No extra capacity or alignment is required.
 #[inline]
 pub fn encode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Error> {
+    if input.is_empty() {
+        return Ok(0);
+    }
     let required = encoded_len(input.len(), mode).ok_or(Error::LengthOverflow)?;
     if output.len() < required {
         return Err(Error::OutputTooSmall { required });
@@ -163,7 +166,10 @@ pub fn encode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Erro
 #[inline]
 pub fn decode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Error> {
     let n = input.len();
-    if (mode.padded() && n % 4 != 0) || (!mode.padded() && n % 4 == 1) {
+    if n == 0 {
+        return Ok(0);
+    }
+    if (mode.padded() && !n.is_multiple_of(4)) || (!mode.padded() && n % 4 == 1) {
         return Err(Error::InvalidLength { index: n });
     }
     let mut data_len = n;

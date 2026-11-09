@@ -7,7 +7,11 @@ use z64_comparison::{
 
 struct Options {
     smoke: bool,
+    quick: bool,
+    valid_only: bool,
     only_z64: bool,
+    pair_only: bool,
+    before_only: bool,
     samples: usize,
     target: Duration,
     build: String,
@@ -16,7 +20,11 @@ struct Options {
 fn options() -> Options {
     let mut options = Options {
         smoke: false,
+        quick: false,
+        valid_only: false,
         only_z64: false,
+        pair_only: false,
+        before_only: false,
         samples: 7,
         target: Duration::from_millis(2),
         build: "unspecified".into(),
@@ -29,7 +37,11 @@ fn options() -> Options {
                 options.samples = 1;
                 options.target = Duration::from_micros(20);
             }
+            "--quick" => options.quick = true,
+            "--valid-only" => options.valid_only = true,
             "--only-z64" => options.only_z64 = true,
+            "--pair-only" => options.pair_only = true,
+            "--before-only" => options.before_only = true,
             "--samples" => options.samples = args.next().expect("sample count").parse().unwrap(),
             "--build" => options.build = args.next().expect("build label"),
             "--target-ns" => {
@@ -40,6 +52,10 @@ fn options() -> Options {
         }
     }
     assert!(options.samples > 0 && !options.target.is_zero());
+    assert!(
+        u8::from(options.only_z64) + u8::from(options.pair_only) + u8::from(options.before_only)
+            <= 1
+    );
     assert!(options
         .build
         .chars()
@@ -55,10 +71,7 @@ struct Case<'a> {
     encode: bool,
 }
 
-fn sample<F: FnMut() -> Result<usize, Rejected>>(
-    mut operation: F,
-    options: &Options,
-) -> Vec<(usize, u128)> {
+fn calibrate<F: FnMut() -> Result<usize, Rejected>>(mut operation: F, options: &Options) -> usize {
     let warmup = if options.smoke {
         Duration::from_micros(5)
     } else {
@@ -73,74 +86,128 @@ fn sample<F: FnMut() -> Result<usize, Rejected>>(
         count += 16;
     }
     let elapsed = start.elapsed().as_nanos().max(1);
-    let iterations =
-        ((options.target.as_nanos() * count as u128 / elapsed).max(1) as usize).min(5_000_000);
-    let mut result = Vec::with_capacity(options.samples);
-    for _ in 0..options.samples {
-        let start = Instant::now();
-        for _ in 0..iterations {
-            black_box(operation()).ok();
-        }
-        result.push((iterations, start.elapsed().as_nanos()));
-    }
-    result
+    ((options.target.as_nanos() * count as u128 / elapsed).max(1) as usize).min(5_000_000)
 }
 
-fn run<C: Codec>(codec: &C, case: &Case<'_>, options: &Options, csv: &mut impl Write) {
-    let capacity = if case.encode {
-        case.text.len()
-    } else {
-        case.text.len().div_ceil(4) * 3
-    };
-    let mut output = vec![0xCCu8; capacity];
-    let expected = if case.kind == "valid" {
-        Ok(if case.encode {
+struct Prepared<'a, C> {
+    codec: &'a C,
+    output: Vec<u8>,
+    start: usize,
+    end: usize,
+    iterations: usize,
+}
+
+impl<'a, C: Codec> Prepared<'a, C> {
+    fn new(codec: &'a C, case: &Case<'_>, options: &Options) -> Self {
+        let capacity = if case.encode {
             case.text.len()
         } else {
-            case.raw.len()
-        })
-    } else {
-        Err(Rejected)
-    };
-    let check = |result: Result<usize, Rejected>, output: &[u8]| {
+            case.text.len().div_ceil(4) * 3
+        };
+        let output = vec![0xCCu8; capacity + 63];
+        let start = (64 - (output.as_ptr() as usize & 63)) & 63;
+        let mut state = Self {
+            codec,
+            output,
+            start,
+            end: start + capacity,
+            iterations: 0,
+        };
+        state.check(case);
+        state.iterations = if case.encode {
+            calibrate(
+                || {
+                    codec.encode(
+                        black_box(case.raw),
+                        black_box(&mut state.output[state.start..state.end]),
+                    )
+                },
+                options,
+            )
+        } else {
+            calibrate(
+                || {
+                    codec.decode(
+                        black_box(case.text),
+                        black_box(&mut state.output[state.start..state.end]),
+                    )
+                },
+                options,
+            )
+        };
+        state.check(case);
+        state
+    }
+
+    fn check(&mut self, case: &Case<'_>) {
+        let result = if case.encode {
+            self.codec
+                .encode(case.raw, &mut self.output[self.start..self.end])
+        } else {
+            self.codec
+                .decode(case.text, &mut self.output[self.start..self.end])
+        };
+        let expected = if case.kind == "valid" {
+            Ok(if case.encode {
+                case.text.len()
+            } else {
+                case.raw.len()
+            })
+        } else {
+            Err(Rejected)
+        };
         assert_eq!(
             result,
             expected,
             "{} {} {} {:?}",
-            codec.name(),
+            self.codec.name(),
             mode_name(case.mode),
             case.kind,
             &case.text[..case.text.len().min(64)]
         );
+        assert!(
+            self.output[..self.start]
+                .iter()
+                .chain(self.output[self.end..].iter())
+                .all(|&byte| byte == 0xCC),
+            "{} wrote outside the passed slice",
+            self.codec.name()
+        );
         if let Ok(length) = result {
             assert_eq!(
-                &output[..length],
+                &self.output[self.start..self.start + length],
                 if case.encode { case.text } else { case.raw },
                 "{}",
-                codec.name()
+                self.codec.name()
             );
         }
-    };
-    let samples = if case.encode {
-        check(codec.encode(case.raw, &mut output), &output);
-        let samples = sample(
-            || codec.encode(black_box(case.raw), black_box(&mut output)),
-            options,
-        );
-        check(codec.encode(case.raw, &mut output), &output);
-        samples
-    } else {
-        check(codec.decode(case.text, &mut output), &output);
-        let samples = sample(
-            || codec.decode(black_box(case.text), black_box(&mut output)),
-            options,
-        );
-        check(codec.decode(case.text, &mut output), &output);
-        samples
-    };
-    for (index, (iterations, elapsed)) in samples.into_iter().enumerate() {
-        let ns = elapsed as f64 / iterations as f64;
-        // For invalid inputs the unconsumed suffix is not throughput. Keep latency only.
+    }
+
+    fn sample(&mut self, case: &Case<'_>, options: &Options, index: usize, csv: &mut impl Write) {
+        let elapsed = if case.encode {
+            let start = Instant::now();
+            for _ in 0..self.iterations {
+                black_box(self.codec.encode(
+                    black_box(case.raw),
+                    black_box(&mut self.output[self.start..self.end]),
+                ))
+                .ok();
+            }
+            start.elapsed().as_nanos()
+        } else {
+            let start = Instant::now();
+            for _ in 0..self.iterations {
+                black_box(self.codec.decode(
+                    black_box(case.text),
+                    black_box(&mut self.output[self.start..self.end]),
+                ))
+                .ok();
+            }
+            start.elapsed().as_nanos()
+        };
+        self.check(case);
+        let ns = elapsed as f64 / self.iterations as f64;
+        // Early rejection does not process the remaining suffix: report latency only.
         let gbps = if case.kind == "valid" {
             format!("{:.9}", case.raw.len() as f64 / ns)
         } else {
@@ -159,9 +226,9 @@ fn run<C: Codec>(codec: &C, case: &Case<'_>, options: &Options, csv: &mut impl W
                 case.text.len()
             },
             if case.encode { "encode" } else { "decode" },
-            codec.name(),
+            self.codec.name(),
             index,
-            iterations,
+            self.iterations,
             elapsed,
             ns,
             gbps
@@ -177,20 +244,52 @@ fn run_all(
     rotation: usize,
     csv: &mut impl Write,
 ) {
-    if options.only_z64 {
-        run(&codecs.z64, case, options, csv);
+    if options.before_only {
+        let mut before = Prepared::new(&codecs.before, case, options);
+        for index in 0..options.samples {
+            before.sample(case, options, index, csv);
+        }
         return;
     }
-    // Rotate independent implementations deterministically to reduce order/thermal bias.
-    for index in 0..6 {
-        match (index + rotation) % 6 {
-            0 => run(&codecs.z64, case, options, csv),
-            1 => run(&codecs.scalar, case, options, csv),
-            2 => run(&codecs.vector, case, options, csv),
-            3 => run(&codecs.simd, case, options, csv),
-            4 => run(&codecs.turbo, case, options, csv),
-            5 => run(&codecs.encodify, case, options, csv),
-            _ => unreachable!(),
+    let mut current = Prepared::new(&codecs.z64, case, options);
+    if options.only_z64 {
+        for index in 0..options.samples {
+            current.sample(case, options, index, csv);
+        }
+        return;
+    }
+    let mut before = Prepared::new(&codecs.before, case, options);
+    if options.pair_only {
+        for index in 0..options.samples {
+            if (index + rotation).is_multiple_of(2) {
+                current.sample(case, options, index, csv);
+                before.sample(case, options, index, csv);
+            } else {
+                before.sample(case, options, index, csv);
+                current.sample(case, options, index, csv);
+            }
+        }
+        return;
+    }
+    let mut scalar = Prepared::new(&codecs.scalar, case, options);
+    let mut vector = Prepared::new(&codecs.vector, case, options);
+    let mut simd = Prepared::new(&codecs.simd, case, options);
+    let mut turbo = Prepared::new(&codecs.turbo, case, options);
+    let mut encodify = Prepared::new(&codecs.encodify, case, options);
+    // Interleave each sample across implementations, rotating order. Old/new
+    // share one binary, compiler, inputs, flags and equally sized output slices.
+    for sample in 0..options.samples {
+        for index in 0..7 {
+            match (index + rotation + sample) % 7 {
+                0 => current.sample(case, options, sample, csv),
+                1 => before.sample(case, options, sample, csv),
+                2 => scalar.sample(case, options, sample, csv),
+                3 => vector.sample(case, options, sample, csv),
+                4 => simd.sample(case, options, sample, csv),
+                5 => turbo.sample(case, options, sample, csv),
+                6 => encodify.sample(case, options, sample, csv),
+                _ => unreachable!(),
+            }
         }
     }
 }
@@ -199,6 +298,11 @@ fn main() {
     let options = options();
     let lengths: &[usize] = if options.smoke {
         &[0, 1, 2, 3, 31, 32, 33, 4096]
+    } else if options.quick {
+        &[
+            0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97,
+            127, 128, 129, 4096, 1048576,
+        ]
     } else {
         LENGTHS
     };
@@ -221,7 +325,7 @@ fn main() {
                 };
                 run_all(&codecs, &case, &options, size_index + mode_index, &mut csv);
             }
-            if !text.is_empty() {
+            if !options.valid_only && !text.is_empty() {
                 for (kind, index) in [
                     ("invalid-head", 0),
                     ("invalid-middle", text.len() / 2),

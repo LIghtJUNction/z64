@@ -2,7 +2,8 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 out="${1:-results/$(date -u +%Y%m%dT%H%M%SZ)}"
-mkdir -p "$out"
+mkdir -p "$(dirname "$out")"
+mkdir "$out"
 out="$(cd "$out" && pwd)"
 {
   date -u +%Y-%m-%dT%H:%M:%SZ
@@ -18,17 +19,23 @@ out="$(cd "$out" && pwd)"
   printf 'Z64_BENCH_CPU=%s\n' "${Z64_BENCH_CPU:-unbound}"
   printf 'Hardware exclusivity is not asserted by this script.\n'
 } > "$out/environment.txt"
+if [[ -r /sys/fs/cgroup/cpu.stat ]]; then
+  cat /sys/fs/cgroup/cpu.stat > "$out/cpu-stat-before.txt"
+else
+  printf 'unavailable: /sys/fs/cgroup/cpu.stat\n' > "$out/cpu-stat-before.txt"
+fi
 cp Cargo.lock workloads.json "$out/"
 cargo tree --locked > "$out/dependencies.txt"
 cargo test --locked > "$out/differential.log" 2>&1
 pin=()
 if [[ -n "${Z64_BENCH_CPU:-}" ]]; then pin=(taskset -c "$Z64_BENCH_CPU"); fi
-for build in generic native scalar reference compiletime-native no-short-path; do
+for build in generic native no-avx512 scalar reference compiletime-native no-short-path; do
   flags=""
   feature=()
   extra=()
   case "$build" in
     native) flags="-C target-cpu=native" ;;
+    no-avx512) feature=(--features no-avx512); extra=(--only-z64) ;;
     scalar) feature=(--features force-scalar); extra=(--only-z64) ;;
     reference) feature=(--features reference); extra=(--only-z64) ;;
     compiletime-native) flags="-C target-cpu=native"; feature=(--features no-runtime-detect); extra=(--only-z64) ;;
@@ -40,6 +47,11 @@ for build in generic native scalar reference compiletime-native no-short-path; d
   RUSTFLAGS="$flags" cargo build --release --locked "${feature[@]}"
   "${pin[@]}" ./target/release/z64-comparison --build "$build" "${extra[@]}" > "$out/$build.csv"
 done
+if [[ -r /sys/fs/cgroup/cpu.stat ]]; then
+  cat /sys/fs/cgroup/cpu.stat > "$out/cpu-stat-after.txt"
+else
+  printf 'unavailable: /sys/fs/cgroup/cpu.stat\n' > "$out/cpu-stat-after.txt"
+fi
 for csv in "$out"/*.csv; do gzip -n "$csv"; done
 python3 summarize.py "$out"
 printf 'Benchmark artifacts: %s\n' "$out"

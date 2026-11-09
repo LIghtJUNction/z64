@@ -10,42 +10,20 @@ use core::arch::x86_64::*;
 #[target_feature(enable = "avx2")]
 #[allow(unused_unsafe)] // Vector constructors are unsafe on Rust 1.70.
 pub(crate) unsafe fn encode(input: &[u8], output: &mut [u8], url: bool) -> usize {
-    // SAFETY: the entrypoint requires AVX2; this only constructs a register constant.
+    // Whole constants avoid rebuilding individual alphabet bytes at runtime.
+    // SAFETY: either branch constructs an AVX2 register constant.
     let alphabet_offsets = unsafe {
-        _mm256_setr_epi8(
-            65,
-            71,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            if url { -17 } else { -19 },
-            if url { 32 } else { -16 },
-            0,
-            0,
-            65,
-            71,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            -4,
-            if url { -17 } else { -19 },
-            if url { 32 } else { -16 },
-            0,
-            0,
-        )
+        if url {
+            _mm256_setr_epi8(
+                65, 71, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -17, 32, 0, 0, 65, 71, -4, -4, -4,
+                -4, -4, -4, -4, -4, -4, -4, -17, 32, 0, 0,
+            )
+        } else {
+            _mm256_setr_epi8(
+                65, 71, -4, -4, -4, -4, -4, -4, -4, -4, -4, -4, -19, -16, 0, 0, 65, 71, -4, -4, -4,
+                -4, -4, -4, -4, -4, -4, -4, -19, -16, 0, 0,
+            )
+        }
     };
     // SAFETY: the entrypoint requires AVX2; this only constructs a register constant.
     let shuffle = unsafe {
@@ -64,13 +42,24 @@ pub(crate) unsafe fn encode(input: &[u8], output: &mut [u8], url: bool) -> usize
             let hi = _mm_loadu_si128(input.as_ptr().add(i + 8).cast());
             let joined = _mm256_set_m128i(_mm_srli_si128::<4>(hi), lo);
             let groups = _mm256_shuffle_epi8(joined, shuffle);
-            let even = _mm256_mulhi_epu16(
-                _mm256_and_si256(groups, _mm256_set1_epi32(0x0fc0_fc00)),
-                _mm256_set1_epi32(0x0400_0040),
+            let even;
+            let odd;
+            // Keep these two multiplications as single AVX2 instructions;
+            // constant folding can otherwise expand them into widening, shifts, and packing.
+            // Both instructions operate only on registers and preserve flags.
+            core::arch::asm!(
+                "vpmulhuw {even}, {groups}, {scale}",
+                even = out(ymm_reg) even,
+                groups = in(ymm_reg) _mm256_and_si256(groups, _mm256_set1_epi32(0x0fc0_fc00)),
+                scale = in(ymm_reg) _mm256_set1_epi32(0x0400_0040),
+                options(pure, nomem, nostack, preserves_flags),
             );
-            let odd = _mm256_mullo_epi16(
-                _mm256_and_si256(groups, _mm256_set1_epi32(0x003f_03f0)),
-                _mm256_set1_epi32(0x0100_0010),
+            core::arch::asm!(
+                "vpmullw {odd}, {groups}, {scale}",
+                odd = out(ymm_reg) odd,
+                groups = in(ymm_reg) _mm256_and_si256(groups, _mm256_set1_epi32(0x003f_03f0)),
+                scale = in(ymm_reg) _mm256_set1_epi32(0x0100_0010),
+                options(pure, nomem, nostack, preserves_flags),
             );
             let sextets = _mm256_or_si256(even, odd);
             // The lookup indices are 0 for A..Z, 1 for a..z, 2..11 for

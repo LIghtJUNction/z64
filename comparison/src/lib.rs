@@ -150,6 +150,21 @@ impl Codec for Z64 {
     }
 }
 
+pub struct Z64Before(pub z64_before::Mode);
+impl Codec for Z64Before {
+    fn name(&self) -> &'static str {
+        "z64-before-d91c6bf"
+    }
+    #[inline]
+    fn encode(&self, input: &[u8], output: &mut [u8]) -> Result<usize, Rejected> {
+        z64_before::encode(input, output, self.0).map_err(|_| Rejected)
+    }
+    #[inline]
+    fn decode(&self, input: &[u8], output: &mut [u8]) -> Result<usize, Rejected> {
+        z64_before::decode(input, output, self.0).map_err(|_| Rejected)
+    }
+}
+
 pub struct Base64Scalar(pub base64::engine::general_purpose::GeneralPurpose);
 pub struct Base64Vector(pub base64::engine::simd::Simd);
 pub struct Base64Simd(pub base64_simd::Base64);
@@ -197,6 +212,7 @@ impl Codec for Base64Simd {
 
 pub struct Codecs {
     pub z64: Z64,
+    pub before: Z64Before,
     pub scalar: Base64Scalar,
     pub vector: Base64Vector,
     pub simd: Base64Simd,
@@ -249,6 +265,12 @@ impl Codecs {
         };
         Self {
             z64: Z64(mode),
+            before: Z64Before(match mode {
+                Mode::Standard => z64_before::Mode::Standard,
+                Mode::StandardNoPad => z64_before::Mode::StandardNoPad,
+                Mode::UrlSafe => z64_before::Mode::UrlSafe,
+                Mode::UrlSafeNoPad => z64_before::Mode::UrlSafeNoPad,
+            }),
             scalar: Base64Scalar(base64::engine::general_purpose::GeneralPurpose::new(
                 alphabet, config,
             )),
@@ -259,9 +281,10 @@ impl Codecs {
         }
     }
 
-    pub fn all(&self) -> [&dyn Codec; 6] {
+    pub fn all(&self) -> [&dyn Codec; 7] {
         [
             &self.z64,
+            &self.before,
             &self.scalar,
             &self.vector,
             &self.simd,

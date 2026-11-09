@@ -2,7 +2,7 @@
 
 Strict RFC 4648 Base64 and Base64URL for caller-owned buffers. Always `no_std`,
 using only `core`: no dependencies, allocation, build script, or external runtime.
-Stable Rust; MSRV **1.70.0**. MIT licensed.
+Stable Rust; MSRV **1.89.0**. MIT licensed.
 
 ```rust
 use z64::{decode, encode, Mode};
@@ -60,14 +60,17 @@ CLI, serde integration, or other encoding format.
 ## Backends and reproducibility
 
 The scalar path uses paired encoding lookups and an eight-symbol SWAR decoder.
-AVX2 and AArch64 NEON process full blocks; scalar code handles short inputs and tails.
-On x86-64, a cached `core::arch` CPUID/XGETBV check establishes CPU and OS support.
+AVX-512 VBMI, AVX2 and AArch64 NEON accelerate conversion. VBMI uses masked
+loads/stores for partial vectors; scalar code handles the final incomplete quantum.
+On x86-64, a cached `core::arch` CPUID/XGETBV check establishes CPU and OS support,
+including opmask and ZMM state before selecting AVX-512.
 SGX, bare-metal/UEFI, and 32-bit x86 use compile-time features. AArch64 uses NEON only when enabled
 by the target. Other targets use scalar code. No API requires `unsafe`.
 
-`force-scalar`, `reference`, `no-runtime-detect`, and `no-short-path` are verification
+`force-scalar`, `reference`, `no-avx512`, `no-runtime-detect`, and `no-short-path` are verification
 and benchmark controls. `reference` retains the simple scalar implementation.
 No feature changes the accepted language, error precedence, or dependency graph.
+Rust 1.89 is required for stable AVX-512 intrinsics; the public API is unchanged.
 
 The independent [comparison project](https://github.com/LIghtJUNction/z64/blob/main/comparison/README.md) pins current baseline
 versions, checks strict semantics, and retains raw samples and environment data.
@@ -76,7 +79,7 @@ runner smoke result is a correctness check, not a speed claim.
 
 ```sh
 cargo test --locked
-cargo +1.70.0 test --locked
+cargo +1.89.0 test --locked
 cargo test --manifest-path comparison/Cargo.toml --locked
 bash comparison/run.sh
 ```

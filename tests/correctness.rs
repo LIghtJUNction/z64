@@ -38,7 +38,7 @@ fn reference_encode(input: &[u8], mode: Mode) -> Vec<u8> {
         result.push(alphabet(mode)[((bits << (6 - count)) & 63) as usize]);
     }
     if padded(mode) {
-        while result.len() % 4 != 0 {
+        while !result.len().is_multiple_of(4) {
             result.push(b'=');
         }
     }
@@ -49,7 +49,10 @@ fn reference_decode(input: &[u8], mode: Mode) -> Option<Vec<u8>> {
     let pad_start = input.iter().position(|&b| b == b'=').unwrap_or(input.len());
     let pad_count = input.len() - pad_start;
     if padded(mode) {
-        if input.len() % 4 != 0 || pad_count > 2 || input[pad_start..].iter().any(|&b| b != b'=') {
+        if !input.len().is_multiple_of(4)
+            || pad_count > 2
+            || input[pad_start..].iter().any(|&b| b != b'=')
+        {
             return None;
         }
     } else if pad_count != 0 || input.len() % 4 == 1 {

@@ -16,6 +16,12 @@ would misrepresent the current baseline. `base64-turbo` and `encodify` are inclu
 because their published benchmarks identify them as stronger SIMD candidates.
 Their published speed claims are not reused as z64 measurements.
 
+The previous z64 implementation is pinned to Git commit
+`d91c6bfbc447061ab4fd2f04feeb65045a6de329` as the `z64-before` dependency. Old and
+current implementations are linked into the same benchmark binary and receive
+the same compiler flags, input bytes and output capacities. The old version is
+reported separately from external competitor rankings.
+
 ## Run
 
 Use current stable Rust: the newest comparison dependencies require Rust 1.93,
@@ -35,6 +41,8 @@ dependency versions, commands, the workload manifest and all raw CSV samples.
 Raw tables are saved as lossless `.csv.gz` files. Read them with `gzip -dc`,
 Python's `gzip.open`, or any gzip reader; no samples are dropped.
 The optional affinity setting requires Linux `taskset`.
+The runner records cgroup CPU counters before and after the matrix when they
+are readable, and records their absence explicitly when they are unavailable.
 
 `workloads.json` fixes the workloads before measurements. They include empty and
 1–3 byte inputs, common token lengths, vector boundaries, 4 KiB through 4 MiB,
@@ -52,6 +60,10 @@ rounded decoded upper bound for every decoder (required by base64-turbo's slice
 API). Engine setup, input generation, reference output, allocation and result
 comparison are outside the timer. Inputs, output references and results pass
 through `black_box`. Every case is checked before and after measurement.
+All output slices start at a 64-byte-aligned address. Allocation reserves up to
+63 guard bytes outside the passed slice solely to choose that alignment;
+codecs still receive exactly the same capacity and no extra tail padding.
+Canary checks verify that every implementation stays within its passed slice.
 
 An independent bit-buffer reference verifies all single- and double-byte inputs,
 fixed-seed random and large buffers, all short padding combinations, every byte
@@ -61,7 +73,9 @@ Error *acceptance* and successful bytes are compared; competitors use different
 error types and priority rules.
 
 The harness warms each case, calibrates iterations, records seven samples and
-rotates competitor order. Input and output buffers are reused, so these are warm
+interleaves implementations within each sample while rotating their order.
+Old/new paired ratios match the same sample index, reducing temporal drift.
+Input and output buffers are reused, so these are warm
 buffer measurements, not cold-cache or concurrent-throughput measurements.
 All libraries share `opt-level=3`, fat LTO and one
 codegen unit. Generic and `target-cpu=native` builds are separate. The scalar,
