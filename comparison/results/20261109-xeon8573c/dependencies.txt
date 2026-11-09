@@ -1,0 +1,10 @@
+z64-comparison v0.1.0 (/workspace/scratch/2f9950bc5a6a/z64/comparison)
+├── base64 v0.23.1
+├── base64-simd v0.8.0
+│   ├── outref v0.5.2
+│   └── vsimd v0.8.0
+├── base64-turbo v0.6.0
+├── encodify v1.0.2
+│   ├── memchr v2.8.3
+│   └── simdutf8 v0.1.5
+└── z64 v0.1.0 (/workspace/scratch/2f9950bc5a6a/z64)

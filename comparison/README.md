@@ -32,6 +32,8 @@ run on an otherwise idle fixed machine with stable power/governor settings;
 record those conditions. A shared CI runner is suitable for smoke checks only.
 `run.sh` records hardware, affinity, toolchain, flags, source commit/status,
 dependency versions, commands, the workload manifest and all raw CSV samples.
+Raw tables are saved as lossless `.csv.gz` files. Read them with `gzip -dc`,
+Python's `gzip.open`, or any gzip reader; no samples are dropped.
 The optional affinity setting requires Linux `taskset`.
 
 `workloads.json` fixes the workloads before measurements. They include empty and

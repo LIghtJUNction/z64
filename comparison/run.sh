@@ -40,5 +40,6 @@ for build in generic native scalar reference compiletime-native no-short-path; d
   RUSTFLAGS="$flags" cargo build --release --locked "${feature[@]}"
   "${pin[@]}" ./target/release/z64-comparison --build "$build" "${extra[@]}" > "$out/$build.csv"
 done
+for csv in "$out"/*.csv; do gzip -n "$csv"; done
 python3 summarize.py "$out"
 printf 'Benchmark artifacts: %s\n' "$out"

@@ -1,0 +1,2 @@
+cargo build --release --manifest-path comparison/Cargo.toml --features reference --locked
+comparison/target/release/z64-comparison --only-z64 --samples 3 --target-ns 500000 --build reference-first

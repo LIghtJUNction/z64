@@ -1,0 +1,6 @@
+RUSTFLAGS='' cargo run --release --locked -- --build generic
+RUSTFLAGS=-C\ target-cpu=native cargo run --release --locked -- --build native
+RUSTFLAGS='' cargo run --release --locked --features force-scalar -- --build scalar --only-z64
+RUSTFLAGS='' cargo run --release --locked --features reference -- --build reference --only-z64
+RUSTFLAGS=-C\ target-cpu=native cargo run --release --locked --features no-runtime-detect -- --build compiletime-native --only-z64
+RUSTFLAGS='' cargo run --release --locked --features no-short-path -- --build no-short-path --only-z64

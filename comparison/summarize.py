@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Aggregate raw samples without discarding slower cases or competitors."""
 import csv
+import gzip
 import json
 import math
 import statistics
@@ -11,15 +12,16 @@ from pathlib import Path
 folder = Path(sys.argv[1])
 manifest = json.loads((folder / "workloads.json").read_text())
 groups = defaultdict(list)
-for path in sorted(folder.glob("*.csv")):
-    if path.name == "summary.csv":
+for path in sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")]):
+    if path.name in ("summary.csv", "summary.csv.gz"):
         continue
-    with path.open() as stream:
+    opener = gzip.open if path.suffix == ".gz" else open
+    with opener(path, "rt", newline="") as stream:
         for row in csv.DictReader(stream):
             key = (row["build"], row["case"], row["mode"], int(row["binary_bytes"]), row["operation"], row["implementation"])
             groups[key].append(float(row["ns_per_call"]))
 medians = {key: statistics.median(values) for key, values in groups.items()}
-with (folder / "summary.csv").open("w") as stream:
+with gzip.open(folder / "summary.csv.gz", "wt", newline="") as stream:
     writer = csv.writer(stream)
     writer.writerow(["build", "case", "mode", "binary_bytes", "operation", "implementation", "median_ns", "min_ns", "max_ns", "samples"])
     for key, values in sorted(groups.items()):
@@ -68,7 +70,7 @@ for before, after in [("reference", "scalar"), ("scalar", "generic"), ("generic"
     for operation in ("encode", "decode"):
         ratios = []
         for mode in manifest["modes"]:
-            for size in manifest["short_path_binary_lengths"] if before == "no-short-path" else manifest["primary_binary_lengths"]:
+            for size in manifest.get("short_path_binary_lengths", [n for n in manifest["all_binary_lengths"] if n <= 33]) if before == "no-short-path" else manifest["primary_binary_lengths"]:
                 suffix = ("valid", mode, size, operation, "z64")
                 first = medians.get((before, *suffix))
                 second = medians.get((after, *suffix))
@@ -77,5 +79,5 @@ for before, after in [("reference", "scalar"), ("scalar", "generic"), ("generic"
         if ratios:
             mean = math.exp(statistics.mean(map(math.log, ratios)))
             lines.append(f"| {before} → {after} | {operation} | {len(ratios)} | {mean:.3f}x | {min(ratios):.3f}x | {max(ratios):.3f}x |")
-lines += ["", "Raw samples include every non-primary boundary length, every baseline and invalid characters at the head, middle and tail. See summary.csv for all medians, ranges and sample counts.", ""]
+lines += ["", "Raw samples include every non-primary boundary length, every baseline and invalid characters at the head, middle and tail. The *.csv.gz files contain losslessly compressed CSV; summary.csv.gz contains all medians, ranges and sample counts.", ""]
 (folder / "summary.md").write_text("\n".join(lines))

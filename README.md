@@ -69,9 +69,9 @@ by the target. Other targets use scalar code. No API requires `unsafe`.
 and benchmark controls. `reference` retains the simple scalar implementation.
 No feature changes the accepted language, error precedence, or dependency graph.
 
-The independent [comparison project](comparison/README.md) pins current baseline
+The independent [comparison project](https://github.com/LIghtJUNction/z64/blob/main/comparison/README.md) pins current baseline
 versions, checks strict semantics, and retains raw samples and environment data.
-[Performance results](comparison/REPORT.md) include both wins and losses. A shared
+[Performance results](https://github.com/LIghtJUNction/z64/blob/main/comparison/REPORT.md) include both wins and losses. A shared
 runner smoke result is a correctness check, not a speed claim.
 
 ```sh
