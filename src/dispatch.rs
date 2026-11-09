@@ -4,6 +4,7 @@
 #[cfg(all(
     target_arch = "x86_64",
     not(target_env = "sgx"),
+    not(any(target_os = "none", target_os = "uefi")),
     not(feature = "no-runtime-detect")
 ))]
 use core::sync::atomic::{AtomicU8, Ordering};
@@ -17,6 +18,7 @@ fn avx2() -> bool {
     #[cfg(all(
         target_arch = "x86_64",
         not(target_env = "sgx"),
+        not(any(target_os = "none", target_os = "uefi")),
         not(feature = "no-runtime-detect")
     ))]
     {
@@ -36,6 +38,7 @@ fn avx2() -> bool {
     #[cfg(not(all(
         target_arch = "x86_64",
         not(target_env = "sgx"),
+        not(any(target_os = "none", target_os = "uefi")),
         not(feature = "no-runtime-detect")
     )))]
     false
@@ -44,6 +47,7 @@ fn avx2() -> bool {
 #[cfg(all(
     target_arch = "x86_64",
     not(target_env = "sgx"),
+    not(any(target_os = "none", target_os = "uefi")),
     not(feature = "no-runtime-detect")
 ))]
 fn detect_avx2() -> bool {
@@ -116,6 +120,7 @@ pub(crate) fn decode(input: &[u8], output: &mut [u8], url: bool) -> Result<usize
     test,
     target_arch = "x86_64",
     not(target_env = "sgx"),
+    not(any(target_os = "none", target_os = "uefi")),
     not(feature = "no-runtime-detect")
 ))]
 mod tests {

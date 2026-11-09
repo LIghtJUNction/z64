@@ -1,0 +1,28 @@
+[package]
+name = "z64-comparison"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.93"
+publish = false
+
+[workspace]
+
+[features]
+force-scalar = ["z64/force-scalar"]
+reference = ["z64/reference"]
+no-runtime-detect = ["z64/no-runtime-detect"]
+no-short-path = ["z64/no-short-path"]
+
+[dependencies]
+z64 = { path = ".." }
+base64 = "=0.23.1"
+base64-simd = "=0.8.0"
+base64-turbo = "=0.6.0"
+encodify = "=1.0.2"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = false
+

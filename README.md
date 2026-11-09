@@ -62,7 +62,7 @@ CLI, serde integration, or other encoding format.
 The scalar path uses paired encoding lookups and an eight-symbol SWAR decoder.
 AVX2 and AArch64 NEON process full blocks; scalar code handles short inputs and tails.
 On x86-64, a cached `core::arch` CPUID/XGETBV check establishes CPU and OS support.
-SGX and 32-bit x86 use compile-time features. AArch64 uses NEON only when enabled
+SGX, bare-metal/UEFI, and 32-bit x86 use compile-time features. AArch64 uses NEON only when enabled
 by the target. Other targets use scalar code. No API requires `unsafe`.
 
 `force-scalar`, `reference`, `no-runtime-detect`, and `no-short-path` are verification
