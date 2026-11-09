@@ -1,0 +1,25 @@
+{
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+  "affinity": "taskset -c 2",
+  "build": "rustc +1.99.1 --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 -A unused-must-use selected-bench.rs -o selected-bench",
+  "run": "taskset -c 2 ./selected-bench > selected-baseline.csv",
+  "baseline_commit": "d91c6bfbc447061ab4fd2f04feeb65045a6de329",
+  "repetitions": 9,
+  "order": "alternating baseline/candidate within each case",
+  "warmup_ms_per_sample": 1,
+  "binary_lengths": [
+    24,
+    48,
+    96,
+    4080,
+    1048560
+  ],
+  "note": "Focused backend experiment; final public API comparisons determine performance claims. Decoder is unchanged; its paired measurements expose noise.",
+  "hashes": {
+    "baseline.rs": "a85090e94eff6e36c84d3ce007af7ae7f04384876d1db1ea0d5e4e3939a24a3f",
+    "selected.rs": "8ab187f907bbd66fd25be0d4f68feb5d04d6eb447ec9694d3ff13d815f76e956",
+    "selected-bench.rs": "e25eb997b683e2fa2d1470bfd04753103c987a3d0585b1db901048decd013662",
+    "selected-baseline.csv": "df5de43fd34a9805928437036512c4d90e09f73ad57cd23f844f5fb6d46d195b"
+  }
+}

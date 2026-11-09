@@ -299,8 +299,10 @@ fn main() {
     let lengths: &[usize] = if options.smoke {
         &[0, 1, 2, 3, 31, 32, 33, 4096]
     } else if options.quick {
+        // Development-only probe includes all three raw lengths whose decoded
+        // body is one 32-character block; the fixed full sweep is unchanged.
         &[
-            0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97,
+            0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 26, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97,
             127, 128, 129, 4096, 1048576,
         ]
     } else {

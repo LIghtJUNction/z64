@@ -1,0 +1,56 @@
+diff --git a/comparison/src/main.rs b/comparison/src/main.rs
+index a9293f8..14924b5 100644
+--- a/comparison/src/main.rs
++++ b/comparison/src/main.rs
+@@ -299,8 +299,10 @@ fn main() {
+     let lengths: &[usize] = if options.smoke {
+         &[0, 1, 2, 3, 31, 32, 33, 4096]
+     } else if options.quick {
++        // Development-only probe includes all three raw lengths whose decoded
++        // body is one 32-character block; the fixed full sweep is unchanged.
+         &[
+-            0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97,
++            0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 26, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97,
+             127, 128, 129, 4096, 1048576,
+         ]
+     } else {
+diff --git a/comparison/workloads.json b/comparison/workloads.json
+index 7f714c9..c971700 100644
+--- a/comparison/workloads.json
++++ b/comparison/workloads.json
+@@ -15,7 +15,7 @@
+   "sample_order": "interleave implementations for each sample; rotate order by size, mode and sample index",
+   "paired_baseline_commit": "d91c6bfbc447061ab4fd2f04feeb65045a6de329",
+   "paired_baseline_repository": "https://github.com/LIghtJUNction/z64",
+-  "development_quick_binary_lengths": [0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97, 127, 128, 129, 4096, 1048576],
++  "development_quick_binary_lengths": [0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 26, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97, 127, 128, 129, 4096, 1048576],
+   "throughput_denominator": "original binary bytes; invalid-input rows report latency only",
+   "output_capacity": "identical preallocated buffers for every implementation: exact encode length; ceil(encoded_length / 4) * 3 for decode",
+   "output_alignment_bytes": 64,
+diff --git a/src/dispatch.rs b/src/dispatch.rs
+index 3a1972f..ba17994 100644
+--- a/src/dispatch.rs
++++ b/src/dispatch.rs
+@@ -6,6 +6,7 @@
+ fn backend() -> u8 {
+     if !cfg!(feature = "no-avx512")
+         && cfg!(all(
++            target_feature = "avx2",
+             target_feature = "avx512f",
+             target_feature = "avx512bw",
+             target_feature = "avx512vbmi"
+@@ -229,8 +230,12 @@ pub(crate) fn decode(input: &[u8], output: &mut [u8], url: bool) -> Result<usize
+     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+     match backend() {
+         // SAFETY: backend() establishes CPU/OS support or compile-target guarantees.
+-        3 => return unsafe { crate::simd::avx512::decode(input, output, url) },
+-        2 => return unsafe { crate::simd::avx2::decode(input, output, url) },
++        // A 32-character body fits one AVX2 block. It avoids VBMI's masked-tail
++        // setup; longer bodies still benefit from VBMI's complete-quantum tail.
++        3 if input.len() != 32 => {
++            return unsafe { crate::simd::avx512::decode(input, output, url) }
++        }
++        2 | 3 => return unsafe { crate::simd::avx2::decode(input, output, url) },
+         _ => {}
+     }
+     #[cfg(target_arch = "aarch64")]

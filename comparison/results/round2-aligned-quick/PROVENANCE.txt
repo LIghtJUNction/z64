@@ -1,0 +1,3 @@
+Development measurements use an uncommitted worktree and are diagnostic only.
+The environment.txt file reuses the hardware/toolchain snapshot from round2-quick; its timestamp is the snapshot capture time, not this run start time.
+The final matrix identifies an immutable source commit and captures fresh metadata.

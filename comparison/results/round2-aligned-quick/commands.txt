@@ -1,0 +1,2 @@
+cargo build --release --manifest-path comparison/Cargo.toml --locked
+taskset -c 2 comparison/target/release/z64-comparison --pair-only --quick --valid-only --samples 7 --target-ns 2000000 --build aligned-quick

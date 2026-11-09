@@ -1,0 +1,4 @@
+RUSTFLAGS='' cargo build --release --manifest-path comparison/Cargo.toml --locked
+taskset -c 2 comparison/target/release/z64-comparison --quick --pair-only --valid-only --samples 19 --target-ns 2000000 --build generic
+RUSTFLAGS=-C\ target-cpu=native cargo build --release --manifest-path comparison/Cargo.toml --locked
+taskset -c 2 comparison/target/release/z64-comparison --quick --pair-only --valid-only --samples 19 --target-ns 2000000 --build native

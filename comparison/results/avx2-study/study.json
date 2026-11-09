@@ -1,0 +1,30 @@
+{
+  "selected": {
+    "harness": "selected-bench.rs",
+    "data": "selected-baseline.csv",
+    "baseline": "baseline.rs",
+    "candidate": "selected.rs"
+  },
+  "experiments": [
+    {
+      "harness": "variant2-bench.rs",
+      "data": "variant2.csv",
+      "baseline": "baseline.rs",
+      "candidate": "variant2.rs",
+      "description": "Wide/unrolled encode plus 128-character batch decode",
+      "decision": "rejected: decoding large buffers regressed; no consistent extra encoding gain"
+    },
+    {
+      "harness": "variant3-bench.rs",
+      "data": "variant3-vs-v1.csv",
+      "baseline": "variant1.rs",
+      "candidate": "variant3.rs",
+      "description": "Wide/unrolled encode plus 64-character batch decode",
+      "decision": "rejected: short-input regressions and small bulk gain"
+    }
+  ],
+  "compile_template": "rustc +1.99.1 --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 -A unused-must-use HARNESS.rs -o study",
+  "run": "taskset -c 2 ./study > samples.csv",
+  "verify": "./study --check",
+  "note": "Focused kernel diagnostics. Rejected candidates are evidence only and are excluded from the published crate. Variant3 is semantically reconstructed from the measured 128-block source with the same 64-block edit; comments differ."
+}

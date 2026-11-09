@@ -6,6 +6,7 @@
 fn backend() -> u8 {
     if !cfg!(feature = "no-avx512")
         && cfg!(all(
+            target_feature = "avx2",
             target_feature = "avx512f",
             target_feature = "avx512bw",
             target_feature = "avx512vbmi"
@@ -229,8 +230,12 @@ pub(crate) fn decode(input: &[u8], output: &mut [u8], url: bool) -> Result<usize
     #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
     match backend() {
         // SAFETY: backend() establishes CPU/OS support or compile-target guarantees.
-        3 => return unsafe { crate::simd::avx512::decode(input, output, url) },
-        2 => return unsafe { crate::simd::avx2::decode(input, output, url) },
+        // A 32-character body fits one AVX2 block. It avoids VBMI's masked-tail
+        // setup; longer bodies still benefit from VBMI's complete-quantum tail.
+        3 if input.len() != 32 => {
+            return unsafe { crate::simd::avx512::decode(input, output, url) }
+        }
+        2 | 3 => return unsafe { crate::simd::avx2::decode(input, output, url) },
         _ => {}
     }
     #[cfg(target_arch = "aarch64")]

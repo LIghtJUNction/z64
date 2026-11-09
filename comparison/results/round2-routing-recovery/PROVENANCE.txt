@@ -1,0 +1,5 @@
+Development-only --quick grid adds raw length 26 to cover all 32-character decode bodies; the full fixed workload remains unchanged. The extra input advances the quick-grid RNG stream, so compare old/current paired samples within this run rather than absolute latency against earlier quick grids.
+
+This focused diagnostic used 19 samples per case and two implementations, retaining 8,512 raw rows per build (17,024 total). It includes only four of the six fixed primary lengths; its generated summary is a partial-workload check, not the complete research-target result. The complete matrix is recorded separately.
+
+The exact measured source is commit 181babfff853fd32154939793b4b936815e700ba plus worktree.patch. That patch includes the narrow body-length routing change, the development-only quick selector and its matching manifest field. Benchmark processes had stopped before the results were analyzed.

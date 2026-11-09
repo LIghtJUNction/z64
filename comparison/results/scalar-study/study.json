@@ -1,0 +1,19 @@
+{
+  "decision": "Rejected; production scalar implementation is unchanged.",
+  "rationale": "Mixed short-input results: Standard8/12 characters and URL16 regressed in median latency. Other cases improved, but shared-VM noise was large and no consistent short-token gain justified increasing decoder tables from512bytes to8192bytes.",
+  "candidate": "Four position-shifted u32 lookup tables per alphabet; bit31 marks invalid input; 8-character validation/store boundary matches the baseline.",
+  "correctness": "Compared exact Result error kind/original offset and complete mutated output against baseline. Both alphabets; text lengths0..128 step4 at32 slice offsets with exact output capacity/canaries; all256 bytevalues at each of64 positions, original offset19.",
+  "measurement": "Both kernels in one executable use the same input/output buffers; fixed seed0x6a09e667f3bcc909;1ms warmup before each sample;7 repetitions, alternating before/after order. All valid, invalid-head, invalid-middle, invalid-tail data retained.",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cpu": "INTEL(R) XEON(R) PLATINUM8573C; pinned CPU2; shared VM",
+  "compile": "rustc +1.99.1 --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 bench.rs -o scalar-pair",
+  "verify": "./scalar-pair --check",
+  "run": "taskset -c2 ./scalar-pair > samples.csv",
+  "hashes": {
+    "baseline.rs": "f2c585419fec5fe18079d97c4af878cb8b6245f97cf09ef23c95b457bc94e522",
+    "candidate.rs": "4206e678929654a21a8d1a2d65f8016c37c466fc238c280235758915aeca8415",
+    "types.rs": "431c100aaf78c864c00939bfd93496864280196beededec8da76323be5d4865b",
+    "bench.rs": "1bbdc23c1bf1842d69c2a4e8ce8b1be18d4e638d66adb250e5c5cdd41f9c8e1f",
+    "samples.csv": "72faaf05b0d59618174e1350780b82a60b055c613b32533be419629d820df076"
+  }
+}
