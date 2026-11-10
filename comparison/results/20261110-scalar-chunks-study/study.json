@@ -1,0 +1,61 @@
+{
+  "status": "Candidate retained for full API validation at the time of this kernel study.",
+  "baseline_commit": "cda77a6bd866be19831decc420e95a5a5bd79e75",
+  "candidate": "Use safe split_first_chunk::<8>() for the input loop, preserving original512-byte inverse tables, u64 SWAR arithmetic, two output stores, eight-symbol validation-before-write boundary and residual four-symbol behavior.",
+  "correctness": {
+    "all_byte_position_offset_alphabet_cases": 1048576,
+    "valid_length_offset_alphabet_cases": 2112,
+    "original_offset": 19,
+    "result": "Exact Result kind/index and complete mutated output/canaries matched baseline."
+  },
+  "measurement": {
+    "cases": 80,
+    "samples": 560,
+    "encoded_lengths": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      64,
+      4096
+    ],
+    "alphabets": [
+      "Standard",
+      "URL-safe"
+    ],
+    "error_locations": [
+      "head",
+      "middle",
+      "tail"
+    ],
+    "warmup_ms_per_sample": 1,
+    "samples_per_case": 7,
+    "order": "Alternating before/after pairs using the same input/output memory",
+    "cpu_affinity": 2,
+    "seed": "0x6a09e667f3bcc909"
+  },
+  "valid_paired_geometric_mean": 1.076836403353143,
+  "valid_paired_improved_cases": 19,
+  "limitations": "Shared-VM dispersion remains. Standard8 valid paired ratio0.979 and Standard8 invalid-middle0.861 are retained regressions. This is a kernel study, not a full API or competitor claim.",
+  "assembly": "All8 per-symbol input bounds checks are absent from the chunk loop. SWAR arithmetic and two output stores remain. No division instruction was introduced. Full wrapper assembly text reduced406 to329 lines; both wrappers still have a104-byte stack frame.",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cpu": "INTEL(R) XEON(R) PLATINUM8573C; shared VM",
+  "build_used": "rustc +stable --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 --emit=asm,link bench.rs -o scalar-pair",
+  "build_pinned": "rustc +1.99.1 --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 --emit=asm,link bench.rs -o scalar-pair",
+  "verify": "./scalar-pair --check",
+  "run": "taskset -c2 ./scalar-pair > samples.csv",
+  "hashes": {
+    "baseline.rs": "f2c585419fec5fe18079d97c4af878cb8b6245f97cf09ef23c95b457bc94e522",
+    "candidate.rs": "65470fd2098730a13efcd300d2f66a3388a63b586551aacddf9021e1daef207e",
+    "types.rs": "431c100aaf78c864c00939bfd93496864280196beededec8da76323be5d4865b",
+    "bench.rs": "0acdf7aa28f5c4d19dce59c6b1fd6f49e527e32d373eac7cf517b0e7ce2b7582",
+    "samples.csv": "e0bb153acea53a860f79e5c98dc6f88e8ba5d431130f6930f4cd16d582061fe9",
+    "summary.json": "49a926a941eaad9549532676dc8dc657f8a0a7572089f9aaa60fdddc85639f3b",
+    "old-assembly.s": "9178998e5a1b9b5052b24b59fdabb682c1a0a11398f6f223d634acd6a354c444",
+    "new-assembly.s": "1e4776f57131ff21c3ff35bd90218fec777b26ade8b96b8f5ae3e925e279a480"
+  }
+}

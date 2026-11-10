@@ -1,0 +1,83 @@
+{
+  "source_commit": "7194d6bdc7148dc33a80678decf0301a2984d051",
+  "case_identities_per_implementation": 668,
+  "samples_per_case": 7,
+  "builds": {
+    "generic": {
+      "implementations": [
+        "base64-scalar-0.23.1",
+        "base64-simd-0.8.0",
+        "base64-turbo-0.6.0",
+        "base64-vector-0.23.1",
+        "encodify-1.0.2",
+        "z64",
+        "z64-before-cda77a6"
+      ],
+      "rows": 32732,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "native": {
+      "implementations": [
+        "base64-scalar-0.23.1",
+        "base64-simd-0.8.0",
+        "base64-turbo-0.6.0",
+        "base64-vector-0.23.1",
+        "encodify-1.0.2",
+        "z64",
+        "z64-before-cda77a6"
+      ],
+      "rows": 32732,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "no-avx512": {
+      "implementations": [
+        "z64"
+      ],
+      "rows": 4676,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "scalar": {
+      "implementations": [
+        "z64"
+      ],
+      "rows": 4676,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "reference": {
+      "implementations": [
+        "z64"
+      ],
+      "rows": 4676,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "compiletime-native": {
+      "implementations": [
+        "z64"
+      ],
+      "rows": 4676,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    },
+    "no-short-path": {
+      "implementations": [
+        "z64"
+      ],
+      "rows": 4676,
+      "missing_identities": 0,
+      "unexpected_identities": 0,
+      "duplicate_identities": 0
+    }
+  },
+  "total_rows": 88844
+}

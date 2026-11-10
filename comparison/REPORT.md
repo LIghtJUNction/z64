@@ -1,160 +1,175 @@
-# Performance result — 2026-11-09, second optimization round
+# Performance result — 2026-11-10: token decoding
 
-**The new implementation substantially improves the previous z64, while the
-2x target against the strongest current competitor remains unmet.** The fixed
-primary workloads show old/current paired geometric means of 2.034x encoding
-and 1.644x decoding for a generic build, and 2.215x / 1.629x for a native build.
-94 of 96 primary paired medians favor the new version. One external-comparison
-median crosses 2x in a visibly noisy case; it does not establish a reliable
-2x advantage. Short-input, large-buffer and early-error losses are retained.
+**This iteration improves many short decoding cases. It does not establish a
+broad throughput increase, and the 2x target against the strongest current
+competitor remains unmet: zero of 96 primary comparisons reaches 2x.** The
+complete fixed matrix and both focused probes retain every regression.
 
-## Source and measurement scope
+## What changed and what is compared
 
 The measured source is
-[`08affc4e90f07e1dc90709fdb0eb8b4bb1431889`](https://github.com/LIghtJUNction/z64/commit/08affc4e90f07e1dc90709fdb0eb8b4bb1431889).
-The previous version,
-[`d91c6bfbc447061ab4fd2f04feeb65045a6de329`](https://github.com/LIghtJUNction/z64/commit/d91c6bfbc447061ab4fd2f04feeb65045a6de329),
-is a pinned dependency in the same benchmark binary. Both receive identical
-compiler flags, input bytes, output capacities and output alignment. The new
-code adds AVX-512 VBMI, improves AVX2 encoding and caches the selected backend.
-A single 32-character decode body uses AVX2 to avoid the wider kernel's setup
-cost. The published crate still uses only `core`; competitor dependencies
-remain in the separate, unpublished comparison workspace.
+[`7194d6bdc7148dc33a80678decf0301a2984d051`](https://github.com/LIghtJUNction/z64/commit/7194d6bdc7148dc33a80678decf0301a2984d051).
+The previous version is the last delivered commit,
+[`cda77a6bd866be19831decc420e95a5a5bd79e75`](https://github.com/LIghtJUNction/z64/commit/cda77a6bd866be19831decc420e95a5a5bd79e75),
+pinned as a dependency in the same benchmark binary. This comparison measures
+only the new iteration. The
+[previous round's report](https://github.com/LIghtJUNction/z64/blob/cda77a6bd866be19831decc420e95a5a5bd79e75/comparison/REPORT.md)
+uses an older baseline and remains separate.
 
-The [recorded host](results/20261109-final-xeon8573c/environment.txt) is an
-Intel Xeon Platinum 8573C with AVX2 and AVX-512 VBMI. Runs use logical CPU 2,
-Rust 1.99.1 / LLVM 23.1.1, optimization level 3, fat LTO and one codegen unit.
-Native builds additionally use `-C target-cpu=native`. This is a shared VM:
-exclusive CPU time and stable frequency were unavailable, and cgroup CPU
-throttling counters were unreadable. These diagnostic measurements do not
-establish dedicated-hardware results or a hardware-independent speed guarantee.
+Two decoding changes were accepted. The public API skips the scalar body helper
+when SIMD has already consumed the complete body. The scalar loop obtains a
+fixed eight-byte input chunk, allowing the compiler to remove eight repeated
+input bounds checks while preserving the inverse tables, SWAR arithmetic,
+validation boundary and two output stores. Encoding and the SIMD kernels are
+unchanged; encoding measurements serve as controls.
 
-The [predefined manifest](workloads.json) fixes six primary sizes, four modes
-and separate encode/decode operations: 24 cases per operation per build,
-96 total. The full sweep includes 34 lengths from zero through 4 MiB, vector
-boundaries and invalid characters at the head, middle and tail. Seven samples
-rotate implementation order after warmup. Each old/current case uses the
-median of ratios paired by sample index; tables aggregate cases with an
-equally weighted geometric mean. These are warmed-call, reused-buffer results.
+The [accepted scalar study](results/20261110-scalar-chunks-study/README.md)
+retains the assembly comparison, exact-output/error equivalence checks and all
+560 timing samples. Its twenty valid direct-kernel cases have a 1.077x paired
+geometric mean, including a 0.979x regression. The
+[guard-only probe](results/20261110-noop-tail-probe/review.md) and
+[combined API probe](results/20261110-combined-tail-swar-probe/review.md) each
+retain 9,856 samples. Rejected
+[direct scalar packing](results/20261110-scalar-direct-study/study.json) and
+[AVX-512 bulk packing](results/20261110-vbmi-bulk-study/README.md) are also
+archived. The bulk proposals repeatedly regress 4,095-byte cases, so fewer
+loads/stores did not justify replacing the production kernels.
 
-## Improvement over the previous z64
+## Complete fixed primary workloads
 
-Ratios use old latency divided by current latency, so values above 1 favor
-current z64. Each entry aggregates all four modes, including losses.
+The [manifest](results/20261110-final-xeon8573c/workloads.json) fixes six primary
+sizes, four modes and separate encode/decode operations: 24 cases per operation
+per build, 96 total. Both versions share compiler flags, inputs, output
+capacities and output alignment. Each case uses the median of seven old/current
+latency ratios paired by sample index. Each table entry below is the equally
+weighted geometric mean across all four modes; values above 1 favor current z64.
 
-| Binary bytes | Generic encode | Generic decode | Native encode | Native decode |
+| Binary bytes | Generic encode control | Generic decode | Native encode control | Native decode |
 |---|---:|---:|---:|---:|
-| 32 | 1.24x | 1.16x | 1.43x | 1.19x |
-| 128 | 1.77x | 1.49x | 1.64x | 1.47x |
-| 4,096 | 5.04x | 2.84x | 5.76x | 2.50x |
-| 65,536 | 3.25x | 2.24x | 3.45x | 1.94x |
-| 1,048,576 | 1.57x | 1.41x | 2.22x | 1.97x |
-| 4,194,304 | 1.25x | 1.28x | 1.14x | 1.12x |
-| All primary cases | 2.034x | 1.644x | 2.215x | 1.629x |
+| 32 | 0.991x | 1.046x | 0.980x | 1.083x |
+| 128 | 1.057x | 1.127x | 0.988x | 1.168x |
+| 4,096 | 1.003x | 0.996x | 0.995x | 1.107x |
+| 65,536 | 0.991x | 1.000x | 0.993x | 0.973x |
+| 1,048,576 | 0.986x | 0.916x | 1.072x | 1.035x |
+| 4,194,304 | 1.078x | 1.028x | 1.006x | 1.080x |
+| All primary cases | 1.017x | 1.017x | 1.005x | 1.073x |
 
-The 4 KiB improvement repeats across modes, generic/native builds and the
-[preceding frozen-source matrix](results/20261109-round2-xeon8573c/summary.md).
-Multi-MiB results are less stable: native Standard 4 MiB encoding and decoding
-have paired ratios of 0.692x and 0.456x, while one native 1 MiB decoding case
-reaches 6.747x with a 0.260–11.855x sample-pair range. Those extremes remain
-in the aggregates. Memory traffic, cache state and scheduling can limit or
-obscure conversion-loop gains; this experiment does not isolate their costs.
-The [complete summary](results/20261109-final-xeon8573c/summary.md) and
-[paired table](results/20261109-final-xeon8573c/paired.csv.gz) contain every mode.
+Sixteen of 24 generic and seventeen of 24 native primary decoding medians favor
+the new version. The generic aggregate matches the unchanged encoding control,
+and large-buffer results vary in direction. These results support a focused
+short-input change rather than an unconditional percentage improvement.
+The [complete summary](results/20261110-final-xeon8573c/summary.md) and
+[paired table](results/20261110-final-xeon8573c/paired.csv.gz) preserve every mode.
 
-## Comparison with current competitors
+Short lengths outside the primary set provide useful scope. Final 24-byte decode
+aggregates are 1.178x generic / 1.292x native, and 25-byte aggregates are
+1.199x / 1.308x; every mode improves at both lengths in both builds. The combined
+focused probe also improves all modes at 15, 16, 17, 23, 24, 25 and 26 bytes.
+Three-byte decoding is less stable: its final aggregates are 1.304x / 1.075x,
+whereas the combined probe measured 0.966x / 0.994x and the guard-only probe
+0.914x / 0.912x. These observations remain visible instead of being treated as
+a uniformly resolved small-input regression.
 
-The baselines are base64 0.23.1's scalar and SIMD engines, base64-simd 0.8.0,
-base64-turbo 0.6.0 and encodify 1.0.2. Versions were checked against the
-crates.io sparse index on the measurement date and locked. Every engine uses
-the same strict alphabet, padding and unused-bit acceptance rules. Output is
-preallocated and starts on a 64-byte boundary: exact encoded capacity for
-encoding, the same rounded safe bound for every decoder. Guard bytes stay
-outside the passed slices. Allocation, preparation and content checks occur
-outside timing; `black_box` covers inputs and results. The
-[protocol and source links](README.md) document these choices.
+Across all 272 valid decode cases in the full sweep, 34 paired medians regress.
+Examples include generic StandardNoPad at 1 MiB, 0.787x; generic URL-safe at
+1 MiB, 0.844x; and generic URL-safe at 33 bytes, 0.792x. Encoding controls also
+scatter substantially: generic StandardNoPad encoding at three bytes measures
+0.370x despite unchanged encoding source. Scheduling and code-layout effects
+are possible contributors; this experiment does not isolate them.
 
-Here the numerator is the fastest external competitor's median latency for
-that exact case, and the denominator is current z64's median latency. The
-previous z64 is excluded from external competitor selection.
+Rejected-input latency is reported separately. Each position has 132 cases per
+build. Early rejection does not process the suffix, so these rows have no
+throughput figure.
 
-| Build | Operation | Cases | Medians at least 2x | Geometric mean ratio | Case range |
+| Invalid-byte position | Generic old/current ratio | Native old/current ratio |
+|---|---:|---:|
+| Head | 1.052x | 1.108x |
+| Middle | 1.008x | 1.072x |
+| Tail | 0.953x | 1.064x |
+
+The generic tail-error aggregate regresses. All error cases and ranges remain
+in the paired table; successful-input gains are not substituted for rejection
+performance.
+
+## Strongest external implementation
+
+The baseline versions were freshly checked on 2026-11-10 against their primary
+crates.io sparse indexes: base64 0.23.1, base64-simd 0.8.0, base64-turbo 0.6.0 and
+encodify 1.0.2. base64's scalar and SIMD engines are measured separately. The
+[version record](results/20261110-final-xeon8573c/baseline-versions.json) preserves
+URLs, timestamps and checksums. Every engine passes the same strict alphabet,
+padding and unused-bit acceptance gate.
+
+For each case below, the numerator is the fastest external implementation's
+median latency and the denominator is current z64's median latency. The previous
+z64 is excluded from external rankings.
+
+| Build | Operation | Cases | At least 2x | Geometric mean ratio | Case range |
 |---|---|---:|---:|---:|---:|
-| Generic | Encode | 24 | 0 | 0.949x | 0.420–1.188x |
-| Generic | Decode | 24 | 0 | 0.857x | 0.505–1.098x |
-| Native | Encode | 24 | 1 | 0.895x | 0.282–2.213x |
-| Native | Decode | 24 | 0 | 0.921x | 0.520–1.608x |
+| Generic | Encode | 24 | 0 | 0.921x | 0.744–1.159x |
+| Generic | Decode | 24 | 0 | 0.888x | 0.635–1.281x |
+| Native | Encode | 24 | 0 | 0.915x | 0.564–1.164x |
+| Native | Decode | 24 | 0 | 0.876x | 0.609–1.523x |
 
-The sole 2.213x case is native StandardNoPad encoding at 4 MiB. Its fastest
-competitor's samples range from 0.310 to 20.964 ms, and z64's from 0.321 to
-2.302 ms. The preceding full matrix had zero cases reaching 2x. This isolated
-crossing is reported transparently, without treating host noise as a speed
-claim. Across the fixed set, z64 remains generally slower than the strongest
-baseline. base64-turbo wins most primary cases; base64-simd and encodify win
-others. The research goal remains unmet without relaxing validation.
+z64 remains generally slower than the strongest competitor. No primary case
+reaches the 2x research target, and no validation was removed to improve ranking.
 
-## Ablations and remaining regressions
+## Implementation controls
 
-These controls compare z64's own builds. They are separate process runs,
-unlike the paired old/current comparison, and are more exposed to temporal
-noise. Ratios above 1 favor the second build. Except for the last row, each
-operation aggregates its 24 primary cases.
+The seven builds also compare retained implementations and dispatch settings.
+These separate-process ablations are more exposed to temporal drift than the
+same-binary paired comparison. They describe the current implementation's
+components, not the marginal gain of this iteration alone.
 
 | Change | Encode ratio | Decode ratio |
 |---|---:|---:|
-| Reference → lookup/SWAR scalar | 2.095x | 6.944x |
-| Scalar → AVX2 dispatch | 5.103x | 5.050x |
-| AVX2 dispatch → default VBMI dispatch | 1.456x | 1.673x |
-| Generic → native compilation | 0.999x | 1.045x |
-| Native → native with runtime detection disabled | 1.038x | 1.025x |
-| Short bypass disabled → enabled, 52 cases per operation | 1.194x | 1.168x |
+| Reference → lookup/SWAR scalar | 1.561x | 5.206x |
+| Scalar → AVX2 dispatch | 5.397x | 5.499x |
+| AVX2 dispatch → default VBMI dispatch | 1.342x | 1.574x |
+| Generic → native compilation | 1.047x | 1.016x |
+| Native → native with runtime detection disabled | 0.937x | 0.975x |
+| Short bypass disabled → enabled | 0.874x | 1.031x |
 
-The large scalar/SIMD changes support retaining optimized conversion paths.
-Small native and dispatch differences do not establish independent benefits:
-the short-path case ratios span 0.545–3.945x for encoding and 0.527–13.317x for
-decoding. Its preceding-matrix aggregate ratios were only 1.033x / 1.015x.
-Native compilation already resolves the backend from target features, making
-its runtime-detection-disabled row an equivalence control. Rejected candidates
-and raw measurements remain in the [AVX2](results/avx2-study/),
-[AVX-512](results/avx512-study/) and [scalar](results/scalar-study/) studies.
+All rows use 24 primary cases per operation except the short-path row, which
+uses 52 predefined short cases. Its per-case ratios span 0.385–2.216x encoding
+and 0.254–4.839x decoding, so it does not establish a general dispatch benefit.
+Native target features already resolve backend selection, making its detection
+control an equivalence check. The full summary retains every ablation range.
 
-Across all 544 valid paired cases, 84 have ratios below 1 and four below 0.8.
-The initial wide-kernel version regressed at 24- and 25-byte decoding in every
-mode; these lengths pass one 32-character body to the SIMD decoder. The narrow
-AVX2 route reduced that regression. In this final matrix, generic 24/25-byte
-decode aggregates are 0.906x / 0.948x, while native is 1.035x / 0.982x. Generic
-24-byte decoding therefore remains slower. The
-[initial review](results/20261109-round2-xeon8573c/short-routing.md) and
-[19-sample focused check](results/round2-routing-recovery/review.md) preserve
-all modes, contradictory observations and the additional 26-byte probe.
-Unchanged scalar paths also exhibit outliers; no uniform short-input win is claimed.
+## Conditions, validation and reproduction
 
-Rejected inputs have a distinct tradeoff. Across 132 cases per error position
-and build, old/current geometric mean ratios for head errors are 0.911x
-generic and 0.849x native. Middle errors improve to 1.225x / 1.185x, and tail
-errors to 1.526x / 1.574x. These rows report latency only, because early rejection
-does not process the remaining suffix. Wider setup cost is a plausible cause
-of the head-error regression, not an isolated measurement of that cost.
+The [environment record](results/20261110-final-xeon8573c/environment.txt) identifies
+an Intel Xeon Platinum 8573C, logical CPU 2, Rust 1.99.1 / LLVM 23.1.1,
+optimization level 3, fat LTO and one codegen unit. Native adds
+`-C target-cpu=native`. This is a shared VM with no exclusive-hardware or fixed
+frequency guarantee; cgroup throttling counters were unavailable. No AArch64
+performance conclusion follows from this x86 run.
 
-## Validation and reproduction
+The [protocol](README.md) uses fixed seeds, warmup, rotating implementation
+order, `black_box`, reused buffers and checks outside timing. All output slices
+start on a 64-byte boundary. Encoders receive exact encoded capacity; decoders
+receive the same rounded safe bound. Guard bytes are outside those slices.
+Valid throughput uses original binary bytes, and allocation/preparation are
+excluded. These are warmed-call measurements.
 
-Six independent differential test groups passed on the final source before
-measurement, including all one- and two-byte inputs, fixed-seed random cases,
-padding combinations, every byte replacement at boundaries, canonical tails
-and mode separation. Each measured case also checks results and output guards.
-The [final-source CI run](https://github.com/LIghtJUNction/z64/actions/runs/42659907982)
-passed all ten jobs, including actual x86 AVX2/AVX-512 tests on MSRV 1.89,
-AArch64 NEON, Miri and bare-metal compilation. Shared-runner benchmark smoke
-output is not used for these performance conclusions.
+All six differential groups and the provenance checks passed before timing.
+Every measured case passed result and guard checks. The
+[final-source CI run](https://github.com/LIghtJUNction/z64/actions/runs/42750973566)
+passed all ten jobs, including actual x86 AVX2/VBMI and AArch64 NEON on stable
+and MSRV, Miri, bare-metal compilation, zero-dependency/package checks and a
+publish dry run. CI smoke timing is not used in these conclusions.
 
-Run `Z64_BENCH_CPU=2 bash comparison/run.sh results/local`, choosing an allowed
-CPU and a new output directory. The
-[final result directory](results/20261109-final-xeon8573c/) preserves **88,844
-raw samples** across seven builds, plus compiler/hardware information,
-dependencies, exact commands, workload manifest and the differential log.
-CSV files are losslessly gzip-compressed; `gzip -dc file.csv.gz` recovers every
-row. Valid throughput always uses original binary bytes. No AArch64 speed
-advantage is claimed from this x86 run. The
-[first-round results](results/20261109-xeon8573c/),
-[intermediate matrix](results/20261109-round2-xeon8573c/) and development trials
-remain separate from this final-source matrix.
+The [full result directory](results/20261110-final-xeon8573c/) preserves exactly
+**88,844 raw samples**: 32,732 each for generic/native and 4,676 for each of five
+controls. An [independent completeness check](results/20261110-final-xeon8573c/completeness-check.json)
+verified every expected case, implementation and sample identity: 668 cases
+per implementation, seven samples per case, with no missing, unexpected or
+duplicate identities. Postprocessing now also checks full-run completeness
+and labels focused probes by their actual scope. No measurement was discarded
+or rerun for that correction.
+
+To reproduce the exact measured code, use the recorded source commit in a
+clean checkout and run `Z64_BENCH_CPU=2 bash comparison/run.sh results/local`,
+choosing an allowed CPU and a new output directory. Commands, lockfile,
+workloads, version checks and all raw rows are retained. CSV files use lossless
+gzip; `gzip -dc file.csv.gz` recovers their complete contents.

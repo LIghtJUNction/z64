@@ -1,0 +1,14 @@
+Focused public-API probe of the combined no-op scalar-tail bypass and fixed-chunk
+SWAR decoder. Measured production source is the recorded Git HEAD plus the
+src/lib.rs and src/scalar.rs hunks in worktree.patch. That patch also records all
+tracked harness changes. The previous implementation is the unmodified pinned
+cda77a6bd866be19831decc420e95a5a5bd79e75 Git dependency in the same binary.
+Encoding is an unchanged control.
+
+The development --quick grid is identical to the preceding guard-only probe.
+Every fixed full/primary set also remains unchanged. The 15–26 interval contains
+15, 16, 17, 23, 24, 25, 26, not 18–22. Each build runs exactly 11 paired samples
+with a 2 ms target and identical preallocated, 64-byte-aligned output slices.
+
+This is a focused valid-input gate, not the full workload or an external
+competitor ranking. All sample rows are retained; no previous probe is replaced.

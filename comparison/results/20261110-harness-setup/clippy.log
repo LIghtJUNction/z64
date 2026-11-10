@@ -1,0 +1,21 @@
+ Downloading crates ...
+  Downloaded base64-simd v0.8.0
+  Downloaded simdutf8 v0.1.5
+  Downloaded vsimd v0.8.0
+  Downloaded outref v0.5.2
+  Downloaded memchr v2.8.3
+  Downloaded base64 v0.23.1
+  Downloaded encodify v1.0.2
+  Downloaded base64-turbo v0.6.0
+   Compiling encodify v1.0.2
+    Checking vsimd v0.8.0
+    Checking outref v0.5.2
+    Checking simdutf8 v0.1.5
+    Checking memchr v2.8.3
+    Checking base64-simd v0.8.0
+    Checking z64 v0.1.0 (https://github.com/LIghtJUNction/z64?rev=cda77a6bd866be19831decc420e95a5a5bd79e75#cda77a6b)
+    Checking base64 v0.23.1
+    Checking z64 v0.1.0 (/workspace/scratch/2f9950bc5a6a/z64)
+    Checking base64-turbo v0.6.0
+    Checking z64-comparison v0.1.0 (/workspace/scratch/2f9950bc5a6a/z64/comparison)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 9.61s

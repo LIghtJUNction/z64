@@ -1,0 +1,13 @@
+Focused public-API probe of the no-op scalar-tail bypass only. Measured
+production source is cda77a6bd866be19831decc420e95a5a5bd79e75 plus the src/lib.rs
+hunk in worktree.patch. That patch also records all tracked harness changes.
+The previous implementation is the unmodified pinned cda77a6 Git dependency
+in the same binary. Encoding is an unchanged control.
+
+Existing development --quick lengths and every fixed full/primary set remain
+unchanged. The 15–26 interval contains 15, 16, 17, 23, 24, 25, 26, not 18–22.
+Each build runs exactly 11 samples with a 2 ms target and identical
+preallocated, 64-byte-aligned output slices.
+
+This is a focused valid-input probe, not the full workload or an external
+competitor ranking. All 9,856 sample rows are retained.

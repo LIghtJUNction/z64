@@ -54,5 +54,5 @@ else
   printf 'unavailable: /sys/fs/cgroup/cpu.stat\n' > "$out/cpu-stat-after.txt"
 fi
 for csv in "$out"/*.csv; do gzip -n "$csv"; done
-python3 summarize.py "$out"
+python3 summarize.py --complete "$out"
 printf 'Benchmark artifacts: %s\n' "$out"

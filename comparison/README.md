@@ -31,10 +31,17 @@ the older manifest format, so refreshing the current baseline does not relabel
 historical comparisons. Mismatched names or incomplete sample pairs fail the
 summary instead of silently discarding the before/after comparison.
 
+Full runs use `summarize.py RESULT_DIRECTORY --complete` to require the exact
+build, implementation, workload and sample identities recorded by the manifest
+and lockfile. This also rejects cases or samples missing from both versions.
+Without `--complete`, focused and historical probes report their observed scope
+without claiming full coverage.
+
 ## Run
 
 Use current stable Rust: the newest comparison dependencies require Rust 1.93,
-independently of z64's MSRV.
+independently of z64's MSRV. Analysis scripts require Python 3.11 or newer and
+use only its standard library.
 
 ```sh
 python3 comparison/tests/test_summarize.py

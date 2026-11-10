@@ -1,0 +1,286 @@
+diff --git a/comparison/Cargo.lock b/comparison/Cargo.lock
+index 5829c53..19873d6 100644
+--- a/comparison/Cargo.lock
++++ b/comparison/Cargo.lock
+@@ -65,7 +65,7 @@ version = "0.1.0"
+ [[package]]
+ name = "z64"
+ version = "0.1.0"
+-source = "git+https://github.com/LIghtJUNction/z64?rev=d91c6bfbc447061ab4fd2f04feeb65045a6de329#d91c6bfbc447061ab4fd2f04feeb65045a6de329"
++source = "git+https://github.com/LIghtJUNction/z64?rev=cda77a6bd866be19831decc420e95a5a5bd79e75#cda77a6bd866be19831decc420e95a5a5bd79e75"
+ 
+ [[package]]
+ name = "z64-comparison"
+@@ -76,5 +76,5 @@ dependencies = [
+  "base64-turbo",
+  "encodify",
+  "z64 0.1.0",
+- "z64 0.1.0 (git+https://github.com/LIghtJUNction/z64?rev=d91c6bfbc447061ab4fd2f04feeb65045a6de329)",
++ "z64 0.1.0 (git+https://github.com/LIghtJUNction/z64?rev=cda77a6bd866be19831decc420e95a5a5bd79e75)",
+ ]
+diff --git a/comparison/Cargo.toml b/comparison/Cargo.toml
+index 5b735ed..ca3dcb0 100644
+--- a/comparison/Cargo.toml
++++ b/comparison/Cargo.toml
+@@ -16,7 +16,7 @@ no-avx512 = ["z64/no-avx512"]
+ 
+ [dependencies]
+ z64 = { path = ".." }
+-z64-before = { package = "z64", git = "https://github.com/LIghtJUNction/z64", rev = "d91c6bfbc447061ab4fd2f04feeb65045a6de329" }
++z64-before = { package = "z64", git = "https://github.com/LIghtJUNction/z64", rev = "cda77a6bd866be19831decc420e95a5a5bd79e75" }
+ base64 = "=0.23.1"
+ base64-simd = "=0.8.0"
+ base64-turbo = "=0.6.0"
+diff --git a/comparison/README.md b/comparison/README.md
+index 85052cc..2454f21 100644
+--- a/comparison/README.md
++++ b/comparison/README.md
+@@ -2,7 +2,7 @@
+ 
+ This separate Cargo workspace is unpublished and excluded from the `z64` package.
+ It compares caller-provided output slices under the same strict RFC 4648 rules.
+-The current baselines were checked against the crates.io sparse index on 2026-11-09:
++The current baselines were checked against the crates.io sparse index on 2026-11-10:
+ 
+ | Crate | Version | Engines measured |
+ |---|---|---|
+@@ -11,23 +11,33 @@ The current baselines were checked against the crates.io sparse index on 2026-11
+ | base64-turbo | 0.6.0 | Strict engines; all supported automatic SIMD paths |
+ | encodify | 1.0.2 | Strict standard/URL-safe, padded/unpadded |
+ 
++The [version check record](baseline-versions.json) preserves primary index URLs,
++HTTP dates, release timestamps and checksums for this baseline selection.
++
+ `base64` gained SIMD engines after 0.22.1. Comparing only its older scalar engine
+ would misrepresent the current baseline. `base64-turbo` and `encodify` are included
+ because their published benchmarks identify them as stronger SIMD candidates.
+ Their published speed claims are not reused as z64 measurements.
+ 
+ The previous z64 implementation is pinned to Git commit
+-`d91c6bfbc447061ab4fd2f04feeb65045a6de329` as the `z64-before` dependency. Old and
++`cda77a6bd866be19831decc420e95a5a5bd79e75` as the `z64-before` dependency. Old and
+ current implementations are linked into the same benchmark binary and receive
+ the same compiler flags, input bytes and output capacities. The old version is
+ reported separately from external competitor rankings.
+ 
++Each result folder records its own previous-version commit and implementation
++name in `workloads.json`. The summarizer uses that saved identity, including
++the older manifest format, so refreshing the current baseline does not relabel
++historical comparisons. Mismatched names or incomplete sample pairs fail the
++summary instead of silently discarding the before/after comparison.
++
+ ## Run
+ 
+ Use current stable Rust: the newest comparison dependencies require Rust 1.93,
+ independently of z64's MSRV.
+ 
+ ```sh
++python3 comparison/tests/test_summarize.py
+ cargo test --manifest-path comparison/Cargo.toml --locked
+ cargo run --release --manifest-path comparison/Cargo.toml --locked -- --smoke
+ Z64_BENCH_CPU=2 bash comparison/run.sh results/local
+diff --git a/comparison/run.sh b/comparison/run.sh
+index 7482cc0..82f6832 100755
+--- a/comparison/run.sh
++++ b/comparison/run.sh
+@@ -24,8 +24,9 @@ if [[ -r /sys/fs/cgroup/cpu.stat ]]; then
+ else
+   printf 'unavailable: /sys/fs/cgroup/cpu.stat\n' > "$out/cpu-stat-before.txt"
+ fi
+-cp Cargo.lock workloads.json "$out/"
++cp Cargo.lock workloads.json baseline-versions.json "$out/"
+ cargo tree --locked > "$out/dependencies.txt"
++python3 tests/test_summarize.py > "$out/summary-check.log" 2>&1
+ cargo test --locked > "$out/differential.log" 2>&1
+ pin=()
+ if [[ -n "${Z64_BENCH_CPU:-}" ]]; then pin=(taskset -c "$Z64_BENCH_CPU"); fi
+diff --git a/comparison/src/lib.rs b/comparison/src/lib.rs
+index 0f070e2..06dfdf1 100644
+--- a/comparison/src/lib.rs
++++ b/comparison/src/lib.rs
+@@ -153,7 +153,7 @@ impl Codec for Z64 {
+ pub struct Z64Before(pub z64_before::Mode);
+ impl Codec for Z64Before {
+     fn name(&self) -> &'static str {
+-        "z64-before-d91c6bf"
++        "z64-before-cda77a6"
+     }
+     #[inline]
+     fn encode(&self, input: &[u8], output: &mut [u8]) -> Result<usize, Rejected> {
+diff --git a/comparison/summarize.py b/comparison/summarize.py
+index 8c9f564..770134d 100644
+--- a/comparison/summarize.py
++++ b/comparison/summarize.py
+@@ -4,6 +4,7 @@ import csv
+ import gzip
+ import json
+ import math
++import re
+ import statistics
+ import sys
+ from collections import defaultdict
+@@ -11,6 +12,19 @@ from pathlib import Path
+ 
+ folder = Path(sys.argv[1])
+ manifest = json.loads((folder / "workloads.json").read_text())
++baseline_commit = manifest.get("paired_baseline_commit")
++baseline_name = manifest.get("paired_baseline_implementation")
++if baseline_commit is not None:
++    if not isinstance(baseline_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", baseline_commit):
++        raise ValueError("paired_baseline_commit must be a full lowercase Git SHA")
++    # Schema 2 recorded the commit but derived the raw name from its prefix.
++    if baseline_name is None:
++        baseline_name = f"z64-before-{baseline_commit[:7]}"
++if baseline_name is not None:
++    if baseline_commit is None or not isinstance(baseline_name, str) or not baseline_name.startswith("z64-before-"):
++        raise ValueError("paired baseline name requires a recorded commit and z64-before- prefix")
++    if baseline_name != f"z64-before-{baseline_commit[:7]}":
++        raise ValueError("paired baseline name does not match its recorded commit")
+ samples = defaultdict(dict)
+ for path in sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")]):
+     if path.name in ("summary.csv", "summary.csv.gz", "paired.csv", "paired.csv.gz"):
+@@ -23,6 +37,17 @@ for path in sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")]):
+             if index in samples[key]:
+                 raise ValueError(f"duplicate sample: {key}, {index}")
+             samples[key][index] = float(row["ns_per_call"])
++observed_baselines = {key[5] for key in samples if key[5].startswith("z64-before")}
++if observed_baselines and observed_baselines != {baseline_name}:
++    raise ValueError(f"raw paired baseline names {sorted(observed_baselines)} do not match manifest {baseline_name!r}")
++paired_builds = {key[0] for key in samples if key[5] == "z64"} & {
++    key[0] for key in samples if key[5] == baseline_name
++}
++for build in paired_builds:
++    current_cases = {key[:5] for key in samples if key[0] == build and key[5] == "z64"}
++    previous_cases = {key[:5] for key in samples if key[0] == build and key[5] == baseline_name}
++    if current_cases != previous_cases:
++        raise ValueError(f"incomplete before/after cases in {build}")
+ groups = {key: list(values.values()) for key, values in samples.items()}
+ medians = {key: statistics.median(values) for key, values in groups.items()}
+ with gzip.open(folder / "summary.csv.gz", "wt", newline="") as stream:
+@@ -65,7 +90,7 @@ paired = {}
+ for key, values in samples.items():
+     if key[5] != "z64":
+         continue
+-    old = samples.get((*key[:5], "z64-before-d91c6bf"))
++    old = samples.get((*key[:5], baseline_name))
+     if old is None:
+         continue
+     if values.keys() != old.keys():
+@@ -76,8 +101,8 @@ if paired:
+         writer = csv.writer(stream)
+         writer.writerow(["build", "case", "mode", "binary_bytes", "operation", "before_median_ns", "after_median_ns", "paired_samples", "median_paired_ratio", "min_paired_ratio", "max_paired_ratio"])
+         for key, values in sorted(paired.items()):
+-            writer.writerow([*key, medians[(*key, "z64-before-d91c6bf")], medians[(*key, "z64")], len(values), statistics.median(values), min(values), max(values)])
+-    lines += ["", "## Paired comparison with the previous z64", "", "The previous version is Git commit d91c6bfbc447061ab4fd2f04feeb65045a6de329. Both versions share one binary, compiler, flags, input bytes and output capacities. Each case uses the median of old/new ratios paired by sample index; ratios above 1 favor the current code. The old version is excluded from external competitor rankings.", "", "| Build | Operation | Primary cases | Current faster | At least 2x | Geometric mean paired ratio | Minimum | Maximum |", "|---|---|---:|---:|---:|---:|---:|---:|"]
++            writer.writerow([*key, medians[(*key, baseline_name)], medians[(*key, "z64")], len(values), statistics.median(values), min(values), max(values)])
++    lines += ["", "## Paired comparison with the previous z64", "", f"The previous version is Git commit {baseline_commit}. Both versions share one binary, compiler, flags, input bytes and output capacities. Each case uses the median of old/new ratios paired by sample index; ratios above 1 favor the current code. The old version is excluded from external competitor rankings.", "", "| Build | Operation | Primary cases | Current faster | At least 2x | Geometric mean paired ratio | Minimum | Maximum |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+     for build in sorted({key[0] for key in paired}):
+         for operation in ("encode", "decode"):
+             ratios = [statistics.median(values) for key, values in paired.items() if key[0] == build and key[1] == "valid" and key[3] in manifest["primary_binary_lengths"] and key[4] == operation]
+diff --git a/comparison/workloads.json b/comparison/workloads.json
+index c971700..f05a7df 100644
+--- a/comparison/workloads.json
++++ b/comparison/workloads.json
+@@ -1,5 +1,5 @@
+ {
+-  "schema": 2,
++  "schema": 3,
+   "fixed_before_measurement": true,
+   "seed_hex": "764bba92a5c64e13",
+   "primary_binary_lengths": [32, 128, 4096, 65536, 1048576, 4194304],
+@@ -13,7 +13,8 @@
+   "target_sample_ns": 2000000,
+   "warmup_ns": 250000,
+   "sample_order": "interleave implementations for each sample; rotate order by size, mode and sample index",
+-  "paired_baseline_commit": "d91c6bfbc447061ab4fd2f04feeb65045a6de329",
++  "paired_baseline_commit": "cda77a6bd866be19831decc420e95a5a5bd79e75",
++  "paired_baseline_implementation": "z64-before-cda77a6",
+   "paired_baseline_repository": "https://github.com/LIghtJUNction/z64",
+   "development_quick_binary_lengths": [0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 26, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97, 127, 128, 129, 4096, 1048576],
+   "throughput_denominator": "original binary bytes; invalid-input rows report latency only",
+diff --git a/src/lib.rs b/src/lib.rs
+index 908f06f..acbb9f8 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -199,12 +199,14 @@ pub fn decode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Erro
+     })?;
+     #[cfg(feature = "force-scalar")]
+     let consumed = 0;
+-    scalar::decode_body(
+-        &input[consumed..body_len],
+-        &mut output[(consumed / 4) * 3..],
+-        mode.url(),
+-        consumed,
+-    )?;
++    if consumed != body_len {
++        scalar::decode_body(
++            &input[consumed..body_len],
++            &mut output[(consumed / 4) * 3..],
++            mode.url(),
++            consumed,
++        )?;
++    }
+     if tail_len != 0 {
+         let a = scalar::value(input[body_len], mode.url(), body_len)?;
+         let b = scalar::value(input[body_len + 1], mode.url(), body_len + 1)?;
+diff --git a/src/scalar.rs b/src/scalar.rs
+index f5bcba2..91e8204 100644
+--- a/src/scalar.rs
++++ b/src/scalar.rs
+@@ -106,21 +106,22 @@ pub(crate) fn decode_body(
+     offset: usize,
+ ) -> Result<(), Error> {
+     let table = if url { &URL_INVERSE } else { &STANDARD_INVERSE };
++    let mut remaining = input;
+     let mut i = 0;
+     let mut o = 0;
+-    while input.len() - i >= 8 {
++    while let Some((chunk, rest)) = remaining.split_first_chunk::<8>() {
+         let values = u64::from_be_bytes([
+-            table[input[i] as usize],
+-            table[input[i + 1] as usize],
+-            table[input[i + 2] as usize],
+-            table[input[i + 3] as usize],
+-            table[input[i + 4] as usize],
+-            table[input[i + 5] as usize],
+-            table[input[i + 6] as usize],
+-            table[input[i + 7] as usize],
++            table[chunk[0] as usize],
++            table[chunk[1] as usize],
++            table[chunk[2] as usize],
++            table[chunk[3] as usize],
++            table[chunk[4] as usize],
++            table[chunk[5] as usize],
++            table[chunk[6] as usize],
++            table[chunk[7] as usize],
+         ]);
+         if values & 0x8080_8080_8080_8080 != 0 {
+-            return Err(invalid_block(&input[i..i + 8], table, offset + i));
++            return Err(invalid_block(chunk, table, offset + i));
+         }
+         // SWAR: gather eight six-bit values into four 12-bit pairs, then two
+         // 24-bit words, and finally six adjacent bytes. Integer byte order is
+@@ -129,16 +130,17 @@ pub(crate) fn decode_body(
+         let words = (pairs & 0x0000_0fff_0000_0fff) | ((pairs & 0x0fff_0000_0fff_0000) >> 4);
+         let packed = (words & 0x00ff_ffff) | ((words & 0x00ff_ffff_0000_0000) >> 8);
+         output[o..o + 6].copy_from_slice(&packed.to_be_bytes()[2..]);
++        remaining = rest;
+         i += 8;
+         o += 6;
+     }
+-    if i != input.len() {
+-        let a = table[input[i] as usize];
+-        let b = table[input[i + 1] as usize];
+-        let c = table[input[i + 2] as usize];
+-        let d = table[input[i + 3] as usize];
++    if !remaining.is_empty() {
++        let a = table[remaining[0] as usize];
++        let b = table[remaining[1] as usize];
++        let c = table[remaining[2] as usize];
++        let d = table[remaining[3] as usize];
+         if (a | b | c | d) & 0x80 != 0 {
+-            return Err(invalid_block(&input[i..i + 4], table, offset + i));
++            return Err(invalid_block(&remaining[..4], table, offset + i));
+         }
+         output[o..o + 3].copy_from_slice(&[(a << 2) | (b >> 4), (b << 4) | (c >> 2), (c << 6) | d]);
+     }

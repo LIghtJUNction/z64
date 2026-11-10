@@ -1,0 +1,130 @@
+{
+  "baseline_commit": "cda77a6bd866be19831decc420e95a5a5bd79e75",
+  "baseline_source": "src/simd/avx512.rs",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1",
+  "cpu": {
+    "vendor_id": "GenuineIntel",
+    "cpu family": "6",
+    "model": "207",
+    "model name": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "stepping": "2",
+    "microcode": "0x1",
+    "cpu MHz": "2299.998",
+    "cache size": "266240 KB",
+    "flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault fsgsbase tsc_adjust bmi1 hle avx2 smep bmi2 erms invpcid rtm avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 arat avx512vbmi umip waitpkg avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid cldemote movdiri movdir64b fsrm serialize tsxldtrk avx512_fp16 arch_capabilities"
+  },
+  "affinity": "taskset -c 2",
+  "environment": "Virtual machine; no governor or frequency controls. Team CPU work paused during both timed runs.",
+  "study_scope": "Direct AVX512 body kernels; complete 3-byte/4-character quanta only. Both alphabets; padding and public dispatch are outside this probe.",
+  "build_commands": [
+    "rustc --edition=2021 -D warnings -C opt-level=3 -C target-cpu=x86-64 -C codegen-units=1 -C lto=thin probe.rs -o probe-generic",
+    "rustc --edition=2021 -D warnings -C opt-level=3 -C target-cpu=native -C codegen-units=1 -C lto=thin probe.rs -o probe-native"
+  ],
+  "run_commands": [
+    "taskset -c 2 ./probe-generic > generic.csv",
+    "taskset -c 2 ./probe-native > native.csv"
+  ],
+  "binary_bytes": [
+    24,
+    48,
+    96,
+    189,
+    192,
+    195,
+    384,
+    4095,
+    65535,
+    1048575,
+    4194303
+  ],
+  "input_output_offsets_from_64_byte_alignment": [
+    [
+      0,
+      0
+    ],
+    [
+      1,
+      1
+    ],
+    [
+      31,
+      47
+    ]
+  ],
+  "alphabets": [
+    "Standard",
+    "URL-safe"
+  ],
+  "samples_per_workload_variant": 11,
+  "sampling": "Rotate variant order by sample; variants share one binary; fixed iteration counts; preallocation and preparation outside timed intervals; black_box inputs and results; output/error checks outside timing.",
+  "seed": "0x932a788ad72e3a5b",
+  "iterations_by_binary_size": {
+    "0..195": 100000,
+    "196..384": 50000,
+    "385..4095": 10000,
+    "4096..65535": 500,
+    "65536..1048575": 16,
+    "larger": 8
+  },
+  "warmup_calls_per_variant": {
+    "below65535": 32,
+    "65535andabove": 4
+  },
+  "cases": [
+    "encode-valid",
+    "decode-valid",
+    "decode-invalid-head",
+    "decode-invalid-middle",
+    "decode-invalid-tail"
+  ],
+  "invalid_byte": "!",
+  "error_offsets": "0, encoded_length/2, encoded_length-1",
+  "rows_per_build": 14520,
+  "aggregation": "Each workload uses median ns/call of eleven samples. Speedup=baseline median/candidate median. aggregate.csv geometric means combine six equally weighted alphabet/alignment workloads for each fixed size and case. paired_median_speedup pairs samples by index.",
+  "throughput": "Only valid cases receive GB/s, computed as raw binary bytes / ns. Invalid cases report latency only.",
+  "validation": {
+    "direct_kernel_suites_passed": 12,
+    "lengths": "0..577",
+    "slice_offsets": "0..63",
+    "illegal_byte_coverage": "all 256 byte values at every position for lengths 4,8,28,32,60,64,68,128,252,256,260,512",
+    "capacity_lengths": "0..259",
+    "other_checks": [
+      "earliest multiple errors",
+      "unchanged suffix after invalid quantum",
+      "input/output sentinels",
+      "exact slices",
+      "independent reference output",
+      "generic --verify-only",
+      "all timed results checked"
+    ]
+  },
+  "decision": "Reject unconditional production replacement. Both candidates regress the 4095-byte workload on both builds; decode also regresses 384 bytes. Larger decode gains are retained as limited experimental observations, not a general speed claim.",
+  "assembly_observations": {
+    "encode": "Bulk loop has three full loads versus four masked loads; two VPERMB plus two VPERMT2B input permutations versus four VPERMB; three additional index constants loaded once after bulk guard. Four multishift and four alphabet VPERMB operations unchanged. No vector spills in bulk loop.",
+    "decode": "Bulk loop has three VPERMT2B plus three full stores versus four VPERMB plus four masked stores. Two additional compaction index constants loaded once after bulk guard. Existing lookup register copies remain; no additional shuffle input copies and no vector spills in bulk loop.",
+    "short_paths": "Disassembly confirms added bulk index constants are loaded only after full-block size guards.",
+    "hypothesis": "Cross-vector permutations couple adjacent vectors and can change scheduling/execution cost; extra constant setup can matter near bulk boundaries. No instruction-level counter or independent microbenchmark establishes the dominant cause. Reduced load/store instruction count alone did not improve all workloads."
+  },
+  "noise_controls": "decode3 encode is unchanged and compiler-merged with baseline encode; encode3 decode source is unchanged. Their retained measurements expose timing/code-layout variation. encode3 and combined encode are compiler-merged too.",
+  "binary_sha256": {
+    "probe-generic": "1ac1aa3080d45787521e4380003f9e7d79de18ade52a75e41cae1f47346d67d7",
+    "probe-native": "fb3c6c9bb97f996f87d1bdad6f83bc96ea4863ce9fd333e164a0fb7aabd6c748",
+    "tests-debug": "772fb6bd730d75620b0c53eb0fb6a352da9cd0b11046f84d6e8a998c7ba40bd0"
+  },
+  "archive_compression": {
+    "format": "gzip",
+    "level": 9,
+    "mtime": 0,
+    "stored_filename": "",
+    "uncompressed_sha256": {
+      "aggregate.csv.gz": "4e80785bd4c95451fcb7f937cd0dd27d31640a9ca04e4ebfbc04587d70e1b6df",
+      "baseline-decode-disassembly.txt.gz": "5afc5d0be68e794a9c162957717da4c9af70d3fadac8a790498618a78298e763",
+      "baseline-encode-disassembly.txt.gz": "bc9e25fa28455e8b01fdc4040be57386b1fc67314a43f1a94f5c908eb21def08",
+      "decode3-disassembly.txt.gz": "8efec32169d0dde5b57e061a367c1f98d6a41b0a8638ed6743a38ff3a087f5ba",
+      "encode3-disassembly.txt.gz": "1a19380552edf2b29128eed8eb49a6e591b475cc95434a3ffeecc4105a733ecb",
+      "generic.csv.gz": "cea7d1bfd9cb2c38ec9ef257e83b96019d1ce9ec6e8e49938604144628211a16",
+      "native.csv.gz": "ac24f61bf5e2f61a75fb8729d937acfa211fbb03992214c9edd7bbec5b6606fb",
+      "summary.csv.gz": "9d08270b546c15e84a00f9fcd702df4fc3fad00881b7aed6fd4307936a8a63d4"
+    }
+  }
+}

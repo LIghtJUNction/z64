@@ -1,0 +1,50 @@
+{
+  "checked_at_utc": "2026-11-10T03:12:35.203951+00:00",
+  "selection": "highest semantic version excluding prereleases and yanked releases in each primary crates.io sparse index",
+  "crates": [
+    {
+      "name": "base64",
+      "version": "0.23.1",
+      "source": "https://index.crates.io/ba/se/base64",
+      "published": "2026-08-04T12:34:31Z",
+      "rust_version": "1.71.0",
+      "crate_checksum": "ac07cdecf99051d9a5238b80f35af32cdeba5b336e55d957b318b50137e18da5",
+      "index_sha256": "42a061d4b29c30417df7b028aa5274a1dfe5b7304794ac05e5bce9ac44b40153",
+      "http_date": "Tue, 10 Nov 2026 03:12:34 GMT",
+      "index_last_modified": "Tue, 04 Aug 2026 12:34:35 GMT"
+    },
+    {
+      "name": "base64-simd",
+      "version": "0.8.0",
+      "source": "https://index.crates.io/ba/se/base64-simd",
+      "published": "2022-12-28T03:07:32Z",
+      "rust_version": "1.63",
+      "crate_checksum": "339abbe78e73178762e23bea9dfd08e697eb3f3301cd4be981c0f78ba5859195",
+      "index_sha256": "2e258fa307345e55809edde154255457e3e3e747ab94f8193e94f3720f04278c",
+      "http_date": "Tue, 10 Nov 2026 03:12:34 GMT",
+      "index_last_modified": "Sun, 01 Feb 2026 11:27:49 GMT"
+    },
+    {
+      "name": "base64-turbo",
+      "version": "0.6.0",
+      "source": "https://index.crates.io/ba/se/base64-turbo",
+      "published": "2026-11-03T08:19:05Z",
+      "rust_version": "1.93",
+      "crate_checksum": "488211f02b1944ca9d57949a7bac44db4c19953e6078aff0c7048d02b212993e",
+      "index_sha256": "eab766b3411048b0b52e9285232f0bcd29891f1e0c0f9c8f2439dd4d9fdc48c8",
+      "http_date": "Tue, 10 Nov 2026 03:12:35 GMT",
+      "index_last_modified": "Tue, 03 Nov 2026 08:19:07 GMT"
+    },
+    {
+      "name": "encodify",
+      "version": "1.0.2",
+      "source": "https://index.crates.io/en/co/encodify",
+      "published": "2026-10-02T16:29:23Z",
+      "rust_version": "1.89",
+      "crate_checksum": "e95d6e27686e1d6991a3077f4dbec9d33d18903466d234165ad86cd08c3ebc79",
+      "index_sha256": "d32fb448a1b9670884c3f5b70ca6b991f3ee75dbc3db316a6716f5b9fd146fba",
+      "http_date": "Tue, 10 Nov 2026 03:12:35 GMT",
+      "index_last_modified": "Fri, 02 Oct 2026 16:29:25 GMT"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+2026-11-10T03:16:58Z
+rustc 1.99.1 (58cf8f9c3 2026-10-13)
+binary: rustc
+commit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67
+commit-date: 2026-10-13
+host: x86_64-unknown-linux-gnu
+release: 1.99.1
+LLVM version: 23.1.1
+cargo 1.99.1 (5f94df478 2026-08-27)
+cda77a6bd866be19831decc420e95a5a5bd79e75
+ M comparison/Cargo.lock
+ M comparison/Cargo.toml
+ M comparison/README.md
+ M comparison/run.sh
+ M comparison/src/lib.rs
+ M comparison/summarize.py
+ M comparison/workloads.json
+?? comparison/baseline-versions.json
+?? comparison/results/20261110-harness-setup/
+?? comparison/tests/test_summarize.py
+Untimed harness validation; Cargo processes pinned to CPU0.

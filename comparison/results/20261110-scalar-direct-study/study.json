@@ -1,0 +1,59 @@
+{
+  "decision": "Rejected: gains are mixed and sampling dispersion is large; no production change.",
+  "baseline_commit": "cda77a6bd866be19831decc420e95a5a5bd79e75",
+  "candidate": "Replace the eight-symbol u64 SWAR pack with six direct byte shift/OR expressions. Same512-byte inverse tables and eight-symbol validation before any output store; same four-symbol tail and error routine.",
+  "correctness": {
+    "all_byte_position_offset_alphabet_cases": 1048576,
+    "valid_length_offset_alphabet_cases": 2112,
+    "offset_in_original_input": 19,
+    "comparison": "Exact error kind/index and complete output/canaries matched baseline."
+  },
+  "measurement": {
+    "cases": 80,
+    "samples": 560,
+    "alphabets": [
+      "Standard",
+      "URL-safe"
+    ],
+    "encoded_lengths": [
+      4,
+      8,
+      12,
+      16,
+      20,
+      24,
+      28,
+      32,
+      64,
+      4096
+    ],
+    "error_cases": [
+      "invalid_head",
+      "invalid_middle",
+      "invalid_tail"
+    ],
+    "warmup_ms": 1,
+    "samples_per_case": 7,
+    "order": "alternating baseline/candidate within each pair",
+    "buffers": "same input and output memory for each compared pair",
+    "cpu_affinity": 2,
+    "seed": "0x6a09e667f3bcc909"
+  },
+  "result": "Examples of median old/new latency ratios: Standard8=0.975,12=0.979,24=0.992; URL8=0.758;32chars=1.04\u20131.07;4096chars Standard=0.978 and URL=1.162. All samples are retained; these noisy kernel diagnostics are not full API performance claims.",
+  "assembly_observation": "In this focused generic build, direct-byte packing replaces two output stores (4+2bytes) with six byte stores. Both wrappers retain eight input bounds checks per loop and a104-byte stack frame. Arithmetic reduction did not establish a consistent speed improvement.",
+  "toolchain": "rustc 1.99.1 (58cf8f9c3 2026-10-13)\nbinary: rustc\ncommit-hash: 58cf8f9c35b355199727627d07ae34a4e2846d67\ncommit-date: 2026-10-13\nhost: x86_64-unknown-linux-gnu\nrelease: 1.99.1\nLLVM version: 23.1.1\n",
+  "cpu": "INTEL(R) XEON(R) PLATINUM8573C, shared VM",
+  "build": "rustc +stable --edition=2021 -O -C target-cpu=x86-64 -C codegen-units=1 --emit=asm,link bench.rs -o scalar-pair",
+  "verify": "./scalar-pair --check",
+  "run": "taskset -c2 ./scalar-pair > samples.csv",
+  "hashes": {
+    "baseline.rs": "f2c585419fec5fe18079d97c4af878cb8b6245f97cf09ef23c95b457bc94e522",
+    "candidate.rs": "b994d208bfe926eafbb28b63e4a93a77fa7a298e294d53a28448ee62f10fcb68",
+    "types.rs": "431c100aaf78c864c00939bfd93496864280196beededec8da76323be5d4865b",
+    "bench.rs": "0acdf7aa28f5c4d19dce59c6b1fd6f49e527e32d373eac7cf517b0e7ce2b7582",
+    "samples.csv": "c704116ed909f72f47ec653d5596f86f84906b880b7bba9faa447ae5137ac9f4",
+    "summary.json": "5bf482dbac9ac29560d9dcaca7a90a516b1ddf6623f470b74c6e5ee75b94e04b",
+    "old-assembly.s": "9178998e5a1b9b5052b24b59fdabb682c1a0a11398f6f223d634acd6a354c444",
+    "new-assembly.s": "1e5127580df68799e7b95feaaa42636718723cf8e1e0b8f9448507e639ec4248"
+  }
+}

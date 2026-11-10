@@ -1,0 +1,4 @@
+cargo fmt --manifest-path comparison/Cargo.toml -- --check
+python3 comparison/tests/test_summarize.py
+taskset -c 0 cargo clippy --manifest-path comparison/Cargo.toml --all-targets --locked -- -D warnings
+taskset -c 0 cargo test --manifest-path comparison/Cargo.toml --locked
