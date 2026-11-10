@@ -140,6 +140,8 @@ jobs:
           rustup component add rustfmt clippy
           cargo fmt --manifest-path comparison/Cargo.toml -- --check
           cargo clippy --manifest-path comparison/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Summary provenance and sample pairing
+        run: python3 comparison/tests/test_summarize.py
       - name: Differential tests against independent libraries
         run: cargo test --manifest-path comparison/Cargo.toml --locked
       - name: Benchmark smoke (shared runner, no performance claims)

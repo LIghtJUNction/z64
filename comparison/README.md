@@ -2,7 +2,7 @@
 
 This separate Cargo workspace is unpublished and excluded from the `z64` package.
 It compares caller-provided output slices under the same strict RFC 4648 rules.
-The current baselines were checked against the crates.io sparse index on 2026-11-09:
+The current baselines were checked against the crates.io sparse index on 2026-11-10:
 
 | Crate | Version | Engines measured |
 |---|---|---|
@@ -11,16 +11,25 @@ The current baselines were checked against the crates.io sparse index on 2026-11
 | base64-turbo | 0.6.0 | Strict engines; all supported automatic SIMD paths |
 | encodify | 1.0.2 | Strict standard/URL-safe, padded/unpadded |
 
+The [version check record](baseline-versions.json) preserves primary index URLs,
+HTTP dates, release timestamps and checksums for this baseline selection.
+
 `base64` gained SIMD engines after 0.22.1. Comparing only its older scalar engine
 would misrepresent the current baseline. `base64-turbo` and `encodify` are included
 because their published benchmarks identify them as stronger SIMD candidates.
 Their published speed claims are not reused as z64 measurements.
 
 The previous z64 implementation is pinned to Git commit
-`d91c6bfbc447061ab4fd2f04feeb65045a6de329` as the `z64-before` dependency. Old and
+`cda77a6bd866be19831decc420e95a5a5bd79e75` as the `z64-before` dependency. Old and
 current implementations are linked into the same benchmark binary and receive
 the same compiler flags, input bytes and output capacities. The old version is
 reported separately from external competitor rankings.
+
+Each result folder records its own previous-version commit and implementation
+name in `workloads.json`. The summarizer uses that saved identity, including
+the older manifest format, so refreshing the current baseline does not relabel
+historical comparisons. Mismatched names or incomplete sample pairs fail the
+summary instead of silently discarding the before/after comparison.
 
 ## Run
 
@@ -28,6 +37,7 @@ Use current stable Rust: the newest comparison dependencies require Rust 1.93,
 independently of z64's MSRV.
 
 ```sh
+python3 comparison/tests/test_summarize.py
 cargo test --manifest-path comparison/Cargo.toml --locked
 cargo run --release --manifest-path comparison/Cargo.toml --locked -- --smoke
 Z64_BENCH_CPU=2 bash comparison/run.sh results/local

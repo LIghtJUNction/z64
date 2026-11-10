@@ -153,7 +153,7 @@ impl Codec for Z64 {
 pub struct Z64Before(pub z64_before::Mode);
 impl Codec for Z64Before {
     fn name(&self) -> &'static str {
-        "z64-before-d91c6bf"
+        "z64-before-cda77a6"
     }
     #[inline]
     fn encode(&self, input: &[u8], output: &mut [u8]) -> Result<usize, Rejected> {

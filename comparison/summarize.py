@@ -4,6 +4,7 @@ import csv
 import gzip
 import json
 import math
+import re
 import statistics
 import sys
 from collections import defaultdict
@@ -11,6 +12,19 @@ from pathlib import Path
 
 folder = Path(sys.argv[1])
 manifest = json.loads((folder / "workloads.json").read_text())
+baseline_commit = manifest.get("paired_baseline_commit")
+baseline_name = manifest.get("paired_baseline_implementation")
+if baseline_commit is not None:
+    if not isinstance(baseline_commit, str) or not re.fullmatch(r"[0-9a-f]{40}", baseline_commit):
+        raise ValueError("paired_baseline_commit must be a full lowercase Git SHA")
+    # Schema 2 recorded the commit but derived the raw name from its prefix.
+    if baseline_name is None:
+        baseline_name = f"z64-before-{baseline_commit[:7]}"
+if baseline_name is not None:
+    if baseline_commit is None or not isinstance(baseline_name, str) or not baseline_name.startswith("z64-before-"):
+        raise ValueError("paired baseline name requires a recorded commit and z64-before- prefix")
+    if baseline_name != f"z64-before-{baseline_commit[:7]}":
+        raise ValueError("paired baseline name does not match its recorded commit")
 samples = defaultdict(dict)
 for path in sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")]):
     if path.name in ("summary.csv", "summary.csv.gz", "paired.csv", "paired.csv.gz"):
@@ -23,6 +37,17 @@ for path in sorted([*folder.glob("*.csv"), *folder.glob("*.csv.gz")]):
             if index in samples[key]:
                 raise ValueError(f"duplicate sample: {key}, {index}")
             samples[key][index] = float(row["ns_per_call"])
+observed_baselines = {key[5] for key in samples if key[5].startswith("z64-before")}
+if observed_baselines and observed_baselines != {baseline_name}:
+    raise ValueError(f"raw paired baseline names {sorted(observed_baselines)} do not match manifest {baseline_name!r}")
+paired_builds = {key[0] for key in samples if key[5] == "z64"} & {
+    key[0] for key in samples if key[5] == baseline_name
+}
+for build in paired_builds:
+    current_cases = {key[:5] for key in samples if key[0] == build and key[5] == "z64"}
+    previous_cases = {key[:5] for key in samples if key[0] == build and key[5] == baseline_name}
+    if current_cases != previous_cases:
+        raise ValueError(f"incomplete before/after cases in {build}")
 groups = {key: list(values.values()) for key, values in samples.items()}
 medians = {key: statistics.median(values) for key, values in groups.items()}
 with gzip.open(folder / "summary.csv.gz", "wt", newline="") as stream:
@@ -65,7 +90,7 @@ paired = {}
 for key, values in samples.items():
     if key[5] != "z64":
         continue
-    old = samples.get((*key[:5], "z64-before-d91c6bf"))
+    old = samples.get((*key[:5], baseline_name))
     if old is None:
         continue
     if values.keys() != old.keys():
@@ -76,8 +101,8 @@ if paired:
         writer = csv.writer(stream)
         writer.writerow(["build", "case", "mode", "binary_bytes", "operation", "before_median_ns", "after_median_ns", "paired_samples", "median_paired_ratio", "min_paired_ratio", "max_paired_ratio"])
         for key, values in sorted(paired.items()):
-            writer.writerow([*key, medians[(*key, "z64-before-d91c6bf")], medians[(*key, "z64")], len(values), statistics.median(values), min(values), max(values)])
-    lines += ["", "## Paired comparison with the previous z64", "", "The previous version is Git commit d91c6bfbc447061ab4fd2f04feeb65045a6de329. Both versions share one binary, compiler, flags, input bytes and output capacities. Each case uses the median of old/new ratios paired by sample index; ratios above 1 favor the current code. The old version is excluded from external competitor rankings.", "", "| Build | Operation | Primary cases | Current faster | At least 2x | Geometric mean paired ratio | Minimum | Maximum |", "|---|---|---:|---:|---:|---:|---:|---:|"]
+            writer.writerow([*key, medians[(*key, baseline_name)], medians[(*key, "z64")], len(values), statistics.median(values), min(values), max(values)])
+    lines += ["", "## Paired comparison with the previous z64", "", f"The previous version is Git commit {baseline_commit}. Both versions share one binary, compiler, flags, input bytes and output capacities. Each case uses the median of old/new ratios paired by sample index; ratios above 1 favor the current code. The old version is excluded from external competitor rankings.", "", "| Build | Operation | Primary cases | Current faster | At least 2x | Geometric mean paired ratio | Minimum | Maximum |", "|---|---|---:|---:|---:|---:|---:|---:|"]
     for build in sorted({key[0] for key in paired}):
         for operation in ("encode", "decode"):
             ratios = [statistics.median(values) for key, values in paired.items() if key[0] == build and key[1] == "valid" and key[3] in manifest["primary_binary_lengths"] and key[4] == operation]

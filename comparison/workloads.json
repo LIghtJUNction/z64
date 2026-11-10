@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "fixed_before_measurement": true,
   "seed_hex": "764bba92a5c64e13",
   "primary_binary_lengths": [32, 128, 4096, 65536, 1048576, 4194304],
@@ -13,7 +13,8 @@
   "target_sample_ns": 2000000,
   "warmup_ns": 250000,
   "sample_order": "interleave implementations for each sample; rotate order by size, mode and sample index",
-  "paired_baseline_commit": "d91c6bfbc447061ab4fd2f04feeb65045a6de329",
+  "paired_baseline_commit": "cda77a6bd866be19831decc420e95a5a5bd79e75",
+  "paired_baseline_implementation": "z64-before-cda77a6",
   "paired_baseline_repository": "https://github.com/LIghtJUNction/z64",
   "development_quick_binary_lengths": [0, 1, 2, 3, 15, 16, 17, 23, 24, 25, 26, 31, 32, 33, 47, 48, 49, 63, 64, 65, 95, 96, 97, 127, 128, 129, 4096, 1048576],
   "throughput_denominator": "original binary bytes; invalid-input rows report latency only",

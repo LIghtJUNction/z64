@@ -24,8 +24,9 @@ if [[ -r /sys/fs/cgroup/cpu.stat ]]; then
 else
   printf 'unavailable: /sys/fs/cgroup/cpu.stat\n' > "$out/cpu-stat-before.txt"
 fi
-cp Cargo.lock workloads.json "$out/"
+cp Cargo.lock workloads.json baseline-versions.json "$out/"
 cargo tree --locked > "$out/dependencies.txt"
+python3 tests/test_summarize.py > "$out/summary-check.log" 2>&1
 cargo test --locked > "$out/differential.log" 2>&1
 pin=()
 if [[ -n "${Z64_BENCH_CPU:-}" ]]; then pin=(taskset -c "$Z64_BENCH_CPU"); fi

@@ -65,7 +65,7 @@ version = "0.1.0"
 [[package]]
 name = "z64"
 version = "0.1.0"
-source = "git+https://github.com/LIghtJUNction/z64?rev=d91c6bfbc447061ab4fd2f04feeb65045a6de329#d91c6bfbc447061ab4fd2f04feeb65045a6de329"
+source = "git+https://github.com/LIghtJUNction/z64?rev=cda77a6bd866be19831decc420e95a5a5bd79e75#cda77a6bd866be19831decc420e95a5a5bd79e75"
 
 [[package]]
 name = "z64-comparison"
@@ -76,5 +76,5 @@ dependencies = [
  "base64-turbo",
  "encodify",
  "z64 0.1.0",
- "z64 0.1.0 (git+https://github.com/LIghtJUNction/z64?rev=d91c6bfbc447061ab4fd2f04feeb65045a6de329)",
+ "z64 0.1.0 (git+https://github.com/LIghtJUNction/z64?rev=cda77a6bd866be19831decc420e95a5a5bd79e75)",
 ]
