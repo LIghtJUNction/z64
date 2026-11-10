@@ -2,7 +2,9 @@ name: Publish
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
+    paths: [rust-toolchain.toml]
   workflow_dispatch:
     inputs:
       tag:
@@ -22,20 +24,43 @@ env:
 
 jobs:
   resolve:
-    name: Resolve and validate the existing tag
+    name: Resolve the release source
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
-      commit: ${{ steps.tag.outputs.commit }}
-      tag: ${{ steps.tag.outputs.tag }}
-      version: ${{ steps.tag.outputs.version }}
+      commit: ${{ steps.plan.outputs.commit || steps.tag.outputs.commit }}
+      tag: ${{ steps.plan.outputs.tag || steps.tag.outputs.tag }}
+      version: ${{ steps.plan.outputs.version || steps.tag.outputs.version }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Resolve tag to one commit and match Cargo.toml
+      - name: Plan a release from the default branch
+        id: plan
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import tomllib
+          with open("Cargo.toml", "rb") as source:
+              package = tomllib.load(source)["package"]
+          if package.get("name") != "z64":
+              raise SystemExit("release manifest is not z64")
+          version = package.get("version", "")
+          if not re.fullmatch(r"(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)", version):
+              raise SystemExit("invalid stable package version")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"commit={os.environ['RELEASE_COMMIT']}\\n")
+              output.write(f"tag=v{version}\\n")
+              output.write(f"version={version}\\n")
+          PY
+      - name: Resolve an existing tag
         id: tag
+        if: github.event_name != 'push' || github.ref != 'refs/heads/main'
         env:
           REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: python3 scripts/release.py resolve "$REQUESTED_TAG"
@@ -51,6 +76,8 @@ jobs:
     needs: [resolve, verify]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    permissions:
+      contents: write
     env:
       RUSTUP_TOOLCHAIN: stable
       RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
@@ -61,12 +88,20 @@ jobs:
         with:
           ref: ${{ needs.resolve.outputs.commit }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
       - name: Install Rust
         run: rustup toolchain install stable --profile minimal
-      - name: Recheck the exact source and unpublished version
+      - name: Verify the exact source and unpublished version
         run: |
-          python3 scripts/release.py check "$RELEASE_TAG" "$RELEASE_COMMIT"
+          test "$(git rev-parse HEAD)" = "$RELEASE_COMMIT"
+          python3 - <<'PY'
+          import os
+          import tomllib
+          with open("Cargo.toml", "rb") as source:
+              package = tomllib.load(source)["package"]
+          if package.get("name") != "z64" or package.get("version") != os.environ["RELEASE_VERSION"]:
+              raise SystemExit("release manifest does not match the planned z64 version")
+          PY
           python3 scripts/audit.py
           python3 scripts/release.py unpublished "$RELEASE_VERSION"
       - name: Verify the exact package before upload
@@ -74,6 +109,23 @@ jobs:
           cargo package --list --locked
           cargo package --locked
           cargo publish --dry-run --locked
+      - name: Create the immutable tag for a verified main-branch release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          RELEASE_TAG: ${{ needs.resolve.outputs.tag }}
+          RELEASE_COMMIT: ${{ needs.resolve.outputs.commit }}
+          RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
+        run: |
+          if git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            test "$(git rev-parse "$RELEASE_TAG^{commit}")" = "$RELEASE_COMMIT"
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a "$RELEASE_TAG" "$RELEASE_COMMIT" -m "z64 $RELEASE_VERSION"
+            git push origin "refs/tags/$RELEASE_TAG"
+          fi
+      - name: Recheck the tag and exact verified source
+        run: python3 scripts/release.py check "$RELEASE_TAG" "$RELEASE_COMMIT"
       - name: Publish
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
