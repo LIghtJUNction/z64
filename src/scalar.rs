@@ -106,21 +106,22 @@ pub(crate) fn decode_body(
     offset: usize,
 ) -> Result<(), Error> {
     let table = if url { &URL_INVERSE } else { &STANDARD_INVERSE };
+    let mut remaining = input;
     let mut i = 0;
     let mut o = 0;
-    while input.len() - i >= 8 {
+    while let Some((chunk, rest)) = remaining.split_first_chunk::<8>() {
         let values = u64::from_be_bytes([
-            table[input[i] as usize],
-            table[input[i + 1] as usize],
-            table[input[i + 2] as usize],
-            table[input[i + 3] as usize],
-            table[input[i + 4] as usize],
-            table[input[i + 5] as usize],
-            table[input[i + 6] as usize],
-            table[input[i + 7] as usize],
+            table[chunk[0] as usize],
+            table[chunk[1] as usize],
+            table[chunk[2] as usize],
+            table[chunk[3] as usize],
+            table[chunk[4] as usize],
+            table[chunk[5] as usize],
+            table[chunk[6] as usize],
+            table[chunk[7] as usize],
         ]);
         if values & 0x8080_8080_8080_8080 != 0 {
-            return Err(invalid_block(&input[i..i + 8], table, offset + i));
+            return Err(invalid_block(chunk, table, offset + i));
         }
         // SWAR: gather eight six-bit values into four 12-bit pairs, then two
         // 24-bit words, and finally six adjacent bytes. Integer byte order is
@@ -129,16 +130,17 @@ pub(crate) fn decode_body(
         let words = (pairs & 0x0000_0fff_0000_0fff) | ((pairs & 0x0fff_0000_0fff_0000) >> 4);
         let packed = (words & 0x00ff_ffff) | ((words & 0x00ff_ffff_0000_0000) >> 8);
         output[o..o + 6].copy_from_slice(&packed.to_be_bytes()[2..]);
+        remaining = rest;
         i += 8;
         o += 6;
     }
-    if i != input.len() {
-        let a = table[input[i] as usize];
-        let b = table[input[i + 1] as usize];
-        let c = table[input[i + 2] as usize];
-        let d = table[input[i + 3] as usize];
+    if !remaining.is_empty() {
+        let a = table[remaining[0] as usize];
+        let b = table[remaining[1] as usize];
+        let c = table[remaining[2] as usize];
+        let d = table[remaining[3] as usize];
         if (a | b | c | d) & 0x80 != 0 {
-            return Err(invalid_block(&input[i..i + 4], table, offset + i));
+            return Err(invalid_block(&remaining[..4], table, offset + i));
         }
         output[o..o + 3].copy_from_slice(&[(a << 2) | (b >> 4), (b << 4) | (c >> 2), (c << 6) | d]);
     }

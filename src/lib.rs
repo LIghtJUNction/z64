@@ -199,12 +199,14 @@ pub fn decode(input: &[u8], output: &mut [u8], mode: Mode) -> Result<usize, Erro
     })?;
     #[cfg(feature = "force-scalar")]
     let consumed = 0;
-    scalar::decode_body(
-        &input[consumed..body_len],
-        &mut output[(consumed / 4) * 3..],
-        mode.url(),
-        consumed,
-    )?;
+    if consumed != body_len {
+        scalar::decode_body(
+            &input[consumed..body_len],
+            &mut output[(consumed / 4) * 3..],
+            mode.url(),
+            consumed,
+        )?;
+    }
     if tail_len != 0 {
         let a = scalar::value(input[body_len], mode.url(), body_len)?;
         let b = scalar::value(input[body_len + 1], mode.url(), body_len + 1)?;
