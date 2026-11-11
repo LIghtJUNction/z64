@@ -1,4 +1,5 @@
 {
   "bump": "patch",
-  "version": "0.1.2"
+  "version": "0.1.2",
+  "request_id": "retry-comparison-lock-2026-11-11"
 }
