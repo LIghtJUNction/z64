@@ -222,7 +222,7 @@ pub struct Codecs {
 
 impl Codecs {
     pub fn new(mode: Mode) -> Self {
-        use base64::engine::{general_purpose::GeneralPurposeConfig, DecodePaddingMode};
+        use base64::engine::{DecodePaddingMode, general_purpose::GeneralPurposeConfig};
         let config = GeneralPurposeConfig::new()
             .with_encode_padding(padded(mode))
             .with_decode_allow_trailing_bits(false)

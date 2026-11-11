@@ -1,4 +1,4 @@
-use z64::{decode, decoded_capacity, encode, encoded_len, Error, Mode};
+use z64::{Error, Mode, decode, decoded_capacity, encode, encoded_len};
 
 const MODES: [Mode; 4] = [
     Mode::Standard,

@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::io::{self, Write};
 use std::time::{Duration, Instant};
 use z64_comparison::{
-    mode_name, reference_encode, Codec, Codecs, Mode, Rejected, Rng, LENGTHS, MODES, SEED,
+    Codec, Codecs, LENGTHS, MODES, Mode, Rejected, Rng, SEED, mode_name, reference_encode,
 };
 
 struct Options {
@@ -56,10 +56,12 @@ fn options() -> Options {
         u8::from(options.only_z64) + u8::from(options.pair_only) + u8::from(options.before_only)
             <= 1
     );
-    assert!(options
-        .build
-        .chars()
-        .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c)));
+    assert!(
+        options
+            .build
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "-_.".contains(c))
+    );
     options
 }
 

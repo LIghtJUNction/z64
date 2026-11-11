@@ -35,11 +35,7 @@ fn backend() -> u8 {
         not(feature = "no-runtime-detect")
     )))]
     {
-        if cfg!(target_feature = "avx2") {
-            2
-        } else {
-            1
-        }
+        if cfg!(target_feature = "avx2") { 2 } else { 1 }
     }
 }
 
@@ -233,7 +229,7 @@ pub(crate) fn decode(input: &[u8], output: &mut [u8], url: bool) -> Result<usize
         // A 32-character body fits one AVX2 block. It avoids VBMI's masked-tail
         // setup; longer bodies still benefit from VBMI's complete-quantum tail.
         3 if input.len() != 32 => {
-            return unsafe { crate::simd::avx512::decode(input, output, url) }
+            return unsafe { crate::simd::avx512::decode(input, output, url) };
         }
         2 | 3 => return unsafe { crate::simd::avx2::decode(input, output, url) },
         _ => {}

@@ -42,10 +42,12 @@ fn check(encode: Encoder, decode: Decoder, enc_block: usize, dec_block: usize) {
                 };
                 assert_eq!(consumed, n / enc_block * enc_block);
                 assert_eq!(&output[offset..offset + written], &expected[..written]);
-                assert!(output[..offset]
-                    .iter()
-                    .chain(&output[offset + written..])
-                    .all(|&b| b == 0xa5));
+                assert!(
+                    output[..offset]
+                        .iter()
+                        .chain(&output[offset + written..])
+                        .all(|&b| b == 0xa5)
+                );
 
                 let consumed = expected.len() / dec_block * dec_block;
                 let written = consumed / 4 * 3;
@@ -64,10 +66,12 @@ fn check(encode: Encoder, decode: Decoder, enc_block: usize, dec_block: usize) {
                     Ok(consumed)
                 );
                 assert_eq!(&output[offset..offset + written], &input[..written]);
-                assert!(output[..offset]
-                    .iter()
-                    .chain(&output[offset + written..])
-                    .all(|&b| b == 0xa5));
+                assert!(
+                    output[..offset]
+                        .iter()
+                        .chain(&output[offset + written..])
+                        .all(|&b| b == 0xa5)
+                );
             }
         }
         for position in 0..dec_block * 2 {

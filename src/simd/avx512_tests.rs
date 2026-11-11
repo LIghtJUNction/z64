@@ -48,10 +48,12 @@ fn exact_slices_offsets_masked_tails_and_bulk_boundaries() {
                 };
                 assert_eq!(used, n / 3 * 3);
                 assert_eq!(&encoded[offset..offset + expected.len()], expected);
-                assert!(encoded[..offset]
-                    .iter()
-                    .chain(&encoded[offset + expected.len()..])
-                    .all(|&b| b == 0xa5));
+                assert!(
+                    encoded[..offset]
+                        .iter()
+                        .chain(&encoded[offset + expected.len()..])
+                        .all(|&b| b == 0xa5)
+                );
 
                 let mut decoded = vec![0xa5; offset + used + 17];
                 // SAFETY: runtime detection establishes all required CPU/OS features.
@@ -64,10 +66,12 @@ fn exact_slices_offsets_masked_tails_and_bulk_boundaries() {
                 };
                 assert_eq!(result, Ok(expected.len()));
                 assert_eq!(&decoded[offset..offset + used], &binary[..used]);
-                assert!(decoded[..offset]
-                    .iter()
-                    .chain(&decoded[offset + used..])
-                    .all(|&b| b == 0xa5));
+                assert!(
+                    decoded[..offset]
+                        .iter()
+                        .chain(&decoded[offset + used..])
+                        .all(|&b| b == 0xa5)
+                );
             }
         }
     }

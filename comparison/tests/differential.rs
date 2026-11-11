@@ -1,4 +1,4 @@
-use z64_comparison::{reference_decode, reference_encode, Codecs, Mode, Rng, LENGTHS, MODES, SEED};
+use z64_comparison::{Codecs, LENGTHS, MODES, Mode, Rng, SEED, reference_decode, reference_encode};
 
 fn decode_case(input: &[u8], mode: Mode, codecs: &Codecs) {
     let expected = reference_decode(input, mode);
@@ -15,10 +15,12 @@ fn decode_case(input: &[u8], mode: Mode, codecs: &Codecs) {
         if let (Ok(length), Ok(bytes)) = (result, &expected) {
             assert_eq!(&output[31..31 + length], bytes, "{}", codec.name());
         }
-        assert!(output[..31]
-            .iter()
-            .chain(output[31 + capacity..].iter())
-            .all(|&b| b == 0xA5));
+        assert!(
+            output[..31]
+                .iter()
+                .chain(output[31 + capacity..].iter())
+                .all(|&b| b == 0xA5)
+        );
     }
 }
 
@@ -35,10 +37,12 @@ fn encode_case(input: &[u8], mode: Mode, codecs: &Codecs) {
             "{} {mode:?}",
             codec.name()
         );
-        assert!(output[..17]
-            .iter()
-            .chain(output[17 + expected.len()..].iter())
-            .all(|&b| b == 0xA5));
+        assert!(
+            output[..17]
+                .iter()
+                .chain(output[17 + expected.len()..].iter())
+                .all(|&b| b == 0xA5)
+        );
     }
     decode_case(&expected, mode, codecs);
 }

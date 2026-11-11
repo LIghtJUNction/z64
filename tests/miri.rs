@@ -1,4 +1,4 @@
-use z64::{decode, encode, encoded_len, Error, Mode};
+use z64::{Error, Mode, decode, encode, encoded_len};
 
 #[test]
 fn exact_allocations_offsets_and_error_tails() {
@@ -22,10 +22,12 @@ fn exact_allocations_offsets_and_error_tails() {
                     Ok(len)
                 );
                 assert_eq!(&output[offset..], input);
-                assert!(text[..offset]
-                    .iter()
-                    .chain(&output[..offset])
-                    .all(|&b| b == 0xa5));
+                assert!(
+                    text[..offset]
+                        .iter()
+                        .chain(&output[..offset])
+                        .all(|&b| b == 0xa5)
+                );
                 if n >= 4 {
                     text[offset] = 0xff;
                     assert_eq!(
