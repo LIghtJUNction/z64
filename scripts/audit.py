@@ -22,7 +22,8 @@ def require(condition, message):
 
 manifest = tomllib.loads((ROOT / "Cargo.toml").read_text())
 require(manifest["package"]["name"] == "z64", "unexpected package name")
-require(manifest["package"]["rust-version"] in ("1.89", "1.89.0"), "MSRV must match CI")
+require(manifest["package"]["edition"] == "2024", "Rust 2024 edition required")
+require(manifest["package"]["rust-version"] == "1.99.1", "MSRV must match CI")
 require(not (ROOT / "build.rs").exists(), "build.rs is forbidden")
 require(manifest["package"].get("build", False) is False, "custom build scripts are forbidden")
 

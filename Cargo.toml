@@ -1,8 +1,8 @@
 [package]
 name = "z64"
 version = "0.1.0"
-edition = "2021"
-rust-version = "1.89"
+edition = "2024"
+rust-version = "1.99.1"
 description = "Strict, allocation-free Base64 and Base64URL with zero dependencies"
 license = "MIT"
 repository = "https://github.com/LIghtJUNction/z64"
@@ -22,6 +22,7 @@ no-avx512 = []
 
 [workspace]
 members = ["."]
+resolver = "3"
 exclude = ["comparison"]
 
 [profile.release]
