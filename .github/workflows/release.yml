@@ -33,7 +33,7 @@ jobs:
       tag: ${{ steps.plan.outputs.tag || steps.tag.outputs.tag }}
       version: ${{ steps.plan.outputs.version || steps.tag.outputs.version }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -85,7 +85,7 @@ jobs:
       RELEASE_COMMIT: ${{ needs.resolve.outputs.commit }}
       RELEASE_VERSION: ${{ needs.resolve.outputs.version }}
     steps:
-      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.resolve.outputs.commit }}
           fetch-depth: 0
